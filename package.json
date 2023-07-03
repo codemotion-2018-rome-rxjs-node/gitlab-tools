@@ -1,0 +1,42 @@
+{
+  "name": "@enrico.piccinin/gitlab-tools",
+  "version": "1.0.0",
+  "description": "tools to work with gitlab repositories",
+  "main": "index.js",
+  "bin": {
+    "gitlab-tools": "dist/lib/command.js"
+  },
+  "scripts": {
+    "test": "mocha -r ts-node/register src/**/*.spec.ts src/**/**/*.spec.ts",
+    "tsc": "tsc --outDir dist",
+    "tsc-version": "tsc --version",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "npm version patch",
+    "preversion": "npm run test",
+    "version": "npm run tsc && git add -A dist",
+    "postversion": "git push"
+  },
+  "keywords": [
+    "gitlab"
+  ],
+  "author": "Enrico Piccinin",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.3.3",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@enrico.piccinin/csv-tools": "^1.0.11",
+    "axios": "^1.4.0",
+    "commander": "^11.0.0",
+    "observable-fs": "^2.2.8",
+    "rxjs": "^7.8.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.0/xlsx-0.20.0.tgz"
+  }
+}

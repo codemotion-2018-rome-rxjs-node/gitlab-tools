@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { nextPage } from './read-merge-requests';
+import { nextPage } from './paged-command';
 
 describe(`nextMergeRequestsCommand`, () => {
     it(`should return the command to be used to read the next page - when totPages number is reached return -1`, () => {

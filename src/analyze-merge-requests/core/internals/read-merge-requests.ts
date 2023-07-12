@@ -4,8 +4,8 @@ import { EMPTY, expand, from, last, map } from "rxjs";
 import { MergeRequest, newMergeRequestCompact } from "./merge-request.model";
 import { runAnalysis } from "./analyze-merge-requests";
 
-export function readMergeRequestsForGroup(token: string, groupId: string) {
-    const query = nextListMergeRequestsCommand(token, groupId, 1)
+export function readMergeRequestsForGroup(gitLabUrl: string, token: string, groupId: string) {
+    const query = nextListMergeRequestsCommand(gitLabUrl, token, groupId, 1)
     const mergeRequests: MergeRequest[] = []
 
     let totPages: any
@@ -26,7 +26,7 @@ export function readMergeRequestsForGroup(token: string, groupId: string) {
                 return EMPTY
             }
             console.log(`>>>>> read page ${page} of ${totPages} (total pages) - Merge requests read: ${mergeRequests.length}`)
-            return from(nextListMergeRequestsCommand(token, groupId, page)).pipe(
+            return from(nextListMergeRequestsCommand(gitLabUrl, token, groupId, page)).pipe(
                 map(resp => {
                     const mergeRequestsPaged = resp.data
                     mergeRequests.push(...mergeRequestsPaged)
@@ -46,8 +46,8 @@ export function toMergeRequestCompact(mergeRequests: MergeRequest[]) {
     return mergeRequestsCompact
 }
 
-export function runMergeRequestAnalysis(token: string, groupId: string) {
-    return readMergeRequestsForGroup(token, groupId).pipe(
+export function runMergeRequestAnalysis(gitLabUrl: string, token: string, groupId: string) {
+    return readMergeRequestsForGroup(gitLabUrl, token, groupId).pipe(
         map((mergeRequests) => toMergeRequestCompact(mergeRequests)),
         map(mergeRequestsCompact => {
             return runAnalysis(mergeRequestsCompact)
@@ -55,8 +55,8 @@ export function runMergeRequestAnalysis(token: string, groupId: string) {
     )
 }
 
-function nextListMergeRequestsCommand(token: string, groupId: string, page: number) {
-    const command = `https://git.ad.rgigroup.com/api/v4/groups/${groupId}/merge_requests?state=all&per_page=100&page=${page}`
+function nextListMergeRequestsCommand(gitLabUrl: string, token: string, groupId: string, page: number) {
+    const command = `https://${gitLabUrl}/api/v4/groups/${groupId}/merge_requests?state=all&per_page=100&page=${page}`
     return axios.get(command, {
         headers: {
             "PRIVATE-TOKEN": token

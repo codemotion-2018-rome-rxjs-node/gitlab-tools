@@ -1,12 +1,19 @@
 # gitlab-tools
+
 gitlab-tools is a set of tools designed to work with gitlab repos.
 
 # Analyze Merge Requests
+
 It is possible to analyze the merge requests of a gitlab group with the command
 
-`node ./dist/lib/command.js analyze-merge-requests --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+`node ./dist/lib/command.js analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+
+or via npx
+
+` npx @enrico.piccinin/gitlab-tools analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 ## MISCELLANEOUS
+
 gitlab-tools is a node app configured to use Typescript scaffolded using the package `@enrico.piccinin/create-node-ts-app`.
 
 gitlab-tools can be published as a package on the public NPM registry.

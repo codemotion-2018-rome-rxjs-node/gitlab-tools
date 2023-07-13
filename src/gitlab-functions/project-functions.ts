@@ -2,7 +2,7 @@ import axios from "axios"
 import { from, map } from "rxjs"
 
 import { ProjectCompact } from "./project.model"
-import { cloneRepo } from "../git-functions/clone-repo"
+import { cloneRepo } from "../git-functions/repo.functions"
 import path from "path"
 
 export function readProject(gitLabUrl: string, token: string, projectId: string) {

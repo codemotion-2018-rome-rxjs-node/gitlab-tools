@@ -17,7 +17,7 @@ export function runPagedCommand(command: string, token: string) {
         expand(({ items, _nextPage }) => {
             const page = _nextPage()
             if (page === -1) {
-                console.log(`>>>>> Reading of Merge Request completed`)
+                console.log(`>>>>> Reading of items completed`)
                 return EMPTY
             }
             return from(nextCall(command, token, page)).pipe(

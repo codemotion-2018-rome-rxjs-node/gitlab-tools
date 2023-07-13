@@ -1,4 +1,4 @@
-import { NEVER, catchError, map, of, tap, toArray } from 'rxjs';
+import { EMPTY, catchError, map, tap, toArray } from 'rxjs';
 
 import { executeCommandObs } from '../execute-command/execute-command';
 import { commitsByMonth, fetchCommits } from './commit.functions';
@@ -10,13 +10,15 @@ export function cloneRepo(url: string, repoPath: string, repoName: string) {
     if (!url) throw new Error(`url is mandatory`);
     if (!repoPath) throw new Error(`Path is mandatory`);
 
-    const command = `git clone ${url} ${repoPath}`;
+    const command = `git clone ${url} ${repoPath.replaceAll(' ', '_')}`;
 
     return executeCommandObs(`Clone ${repoName}`, command).pipe(
         tap(() => `${repoName} cloned`),
         map(() => repoPath),
-        catchError(() => {
-            return of(`Error: "${repoName}" while executing command "${command}"`)
+        catchError((err) => {
+            console.error(`!!!!!!!!!!!!!!! Error: while cloning repo "${repoName}" - error code: ${err.code}`)
+            console.error(`!!!!!!!!!!!!!!! Command erroring: "${command}"`)
+            return EMPTY
         })
     );
 }
@@ -33,7 +35,7 @@ export function newRepoCompact(repoPath: string) {
         }),
         catchError((err) => {
             console.error(`Error: while reading the commits of repo "${repoPath}" - error:\n ${JSON.stringify(err, null, 2)}`)
-            return NEVER
+            return EMPTY
         })
     );
 }
@@ -110,7 +112,7 @@ function yearMonthAsNumber(year: number, month: number) {
 export function repoCommitsByMonthRecords(reposByMonths: ReposWithCommitsByMonths) {
     const records: { [repoPath: string]: { [yearMonth: string]: number } } = {}
 
-    const allYearMonths = Object.keys(reposByMonths).reduce((acc, yearMonth) => {
+    const allYearMonths = Object.keys(reposByMonths).sort().reduce((acc, yearMonth) => {
         acc[yearMonth] = 0
         return acc
     }, {} as { [yearMonth: string]: number })

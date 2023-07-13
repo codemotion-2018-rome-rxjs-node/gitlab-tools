@@ -12,6 +12,33 @@ or via npx
 
 ` npx @enrico.piccinin/gitlab-tools analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
+# Clone Gitlab Projects
+
+It is possible to clone all the projects contained in a Gitlab group with the command
+
+`node ./dist/lib/command.js clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+
+or via npx
+
+` npx @enrico.piccinin/gitlab-tools clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+
+# Read Commits from Repos
+
+It is possible to read the commit records of all repos contained in a folder (maybe after having cloned them with the `clone-group-projects` command).
+
+After reading the commits, the following files are created:
+- <folder-name>.json
+- <folder-name>-repos-commits-by-month.json
+- <folder-name>-repos-commits-by-month.csv
+
+To read the commits run the command
+
+`node ./dist/lib/command.js read-repos-commits --folderPath <path to folder> --outdir <outdir>`
+
+or via npx
+
+` npx @enrico.piccinin/gitlab-tools read-repos-commits --folderPath <path to folder> --outdir <outdir>`
+
 ## MISCELLANEOUS
 
 gitlab-tools is a node app configured to use Typescript scaffolded using the package `@enrico.piccinin/create-node-ts-app`.

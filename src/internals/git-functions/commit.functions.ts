@@ -1,4 +1,4 @@
-import { map, catchError, mergeMap, NEVER } from 'rxjs';
+import { map, catchError, EMPTY, concatMap, from } from 'rxjs';
 import { executeCommandObs } from '../execute-command/execute-command';
 import { CommitCompact, CommitsByMonths } from './commit.model';
 
@@ -17,13 +17,13 @@ export function fetchCommits(repoPath: string) {
 
     return executeCommandObs(`Fetch commits`, command).pipe(
         map((commits: string) => commits.split('\n')),
-        mergeMap((commits: string[]) => commits),
+        concatMap((commits: string[]) => from(commits)),
         map((commit: string) => {
             return newCommitCompact(commit)
         }),
         catchError((err) => {
             console.error(`Error: "fetchCommits" while executing command "${command}" - error ${JSON.stringify(err, null, 2)}`)
-            return NEVER
+            return EMPTY
         })
     );
 }

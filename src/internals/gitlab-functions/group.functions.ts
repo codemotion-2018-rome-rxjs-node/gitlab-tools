@@ -28,7 +28,7 @@ export function fetchGroupDescendantGroups(gitLabUrl: string, token: string, gro
     )
 }
 
-export function fetchAllGroupProjects(gitLabUrl: string, token: string, groupId: string) {
+export function fetchAllGroupProjects(gitLabUrl: string, token: string, groupId: string, includeArchived = false) {
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}/projects?include_subgroups=true&per_page=100`
     return from(axios.get(command, {
         headers: {
@@ -36,7 +36,8 @@ export function fetchAllGroupProjects(gitLabUrl: string, token: string, groupId:
         }
     })).pipe(
         map(resp => {
-            return resp.data
+            const projects = includeArchived ? resp.data : resp.data.filter((project: any) => !project.archived)
+            return projects
         })
     )
 }

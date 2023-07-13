@@ -2,8 +2,8 @@ import path from "path"
 import { concatMap, map, tap } from "rxjs"
 import XLSX from 'xlsx';
 
-import { readGroup } from "../../../internals/gitlab-functions/group-functions"
-import { runMergeRequestAnalysis } from "./read-merge-requests"
+import { readGroup } from "../../../internals/gitlab-functions/group.functions"
+import { runMergeRequestAnalysis } from "./analyze-merge-requests"
 import { analysisToExcel } from "./to-excel"
 
 

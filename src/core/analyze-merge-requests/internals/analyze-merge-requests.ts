@@ -1,5 +1,16 @@
+import { map } from "rxjs";
 import { MergeRequestAnalysis, SummaryStatsByAuthor, SummaryStatsByMonth, SummaryStatsByNumDays, newMergeRequestAnalysis, newStatsByMonth } from "./analyze-merge-requests.model";
-import { MergeRequestCompact } from "./merge-request.model";
+import { MergeRequestCompact } from "../../../internals/gitlab-functions/merge-request.model";
+import { readMergeRequestsForGroup, toMergeRequestCompact } from "../../../internals/gitlab-functions/merge-requests.functions";
+
+export function runMergeRequestAnalysis(gitLabUrl: string, token: string, groupId: string) {
+    return readMergeRequestsForGroup(gitLabUrl, token, groupId).pipe(
+        map((mergeRequests) => toMergeRequestCompact(mergeRequests)),
+        map(mergeRequestsCompact => {
+            return runAnalysis(mergeRequestsCompact)
+        })
+    )
+}
 
 export function runAnalysis(mergeRequestsCompact: MergeRequestCompact[]) {
     const mergeRequestAnalysis = newMergeRequestAnalysis(mergeRequestsCompact)

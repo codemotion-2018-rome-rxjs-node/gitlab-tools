@@ -10,14 +10,14 @@ describe('groupRepoCommitsByMonth', () => {
                 path: 'user/repo1',
                 commits: [],
                 commitsByMonth: {
-                    '01-2021': {
+                    '2021-01': {
                         commits: [
                             { sha: '123', author: 'author1', date: new Date('2021-01-01') },
                             { sha: '456', author: 'author2', date: new Date('2021-01-15') },
                         ],
                         authors: new Set(['author1', 'author2']),
                     },
-                    '02-2021': {
+                    '2021-02': {
                         commits: [
                             { sha: '789', author: 'author3', date: new Date('2021-02-01') },
                             { sha: 'abc', author: 'author1', date: new Date('2021-02-15') },
@@ -30,14 +30,14 @@ describe('groupRepoCommitsByMonth', () => {
                 path: 'user/repo2',
                 commits: [],
                 commitsByMonth: {
-                    '01-2021': {
+                    '2021-01': {
                         commits: [
                             { sha: 'def', author: 'author5', date: new Date('2021-01-01') },
                             { sha: 'ghi', author: 'author4', date: new Date('2021-01-15') },
                         ],
                         authors: new Set(['author4', 'author5']),
                     },
-                    '02-2021': {
+                    '2021-02': {
                         commits: [
                             { sha: 'jkl', author: 'author4', date: new Date('2021-02-01') },
                             { sha: 'mno', author: 'author6', date: new Date('2021-02-15') },
@@ -48,7 +48,7 @@ describe('groupRepoCommitsByMonth', () => {
             },
         ];
         const expected = {
-            '01-2021': [
+            '2021-01': [
                 {
                     repoPath: 'user/repo1',
                     commits: [
@@ -66,7 +66,7 @@ describe('groupRepoCommitsByMonth', () => {
                     authors: ['author4', 'author5'],
                 },
             ],
-            '02-2021': [
+            '2021-02': [
                 {
                     repoPath: 'user/repo1',
                     commits: [

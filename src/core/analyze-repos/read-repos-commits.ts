@@ -1,9 +1,10 @@
 import { concatMap, from, map, mergeMap, tap, toArray } from "rxjs";
 
 import { reposInFolder } from "../../internals/repos-functions/repos-in-folder";
-import { groupRepoCommitsByMonth, newRepoCompact } from "../../internals/git-functions/repo.functions";
+import { groupRepoCommitsByMonth, newRepoCompact, repoCommitsByMonthRecords } from "../../internals/git-functions/repo.functions";
 import path from "path";
 import { writeFileObs } from "observable-fs";
+import { toCsv } from "@enrico.piccinin/csv-tools";
 
 // readReposCommits reeads all the repos contained in a directory and returns an observable of an array of RepoCompact
 export function readReposCommits(folderPath: string, outdir: string) {
@@ -45,8 +46,21 @@ export function readReposCommits(folderPath: string, outdir: string) {
                     tap({
                         next: () => console.log(`====>>>> Repos commits by month info written in file: ${outFile}`),
                     }),
-                    map(() => repos)
+                    map(() => repoCommitsByMonth)
                 );
-        })
+        }),
+        concatMap((repoCommitsByMonth) => {
+            const repoCommitsByMonthRecs = repoCommitsByMonthRecords(repoCommitsByMonth)
+            const repoCommitsByMonthCsvs = toCsv(repoCommitsByMonthRecs)
+
+            const folderName = path.basename(folderPath);
+            const outFile = path.join(outdir, `${folderName}-repos-commits-by-month.csv`);
+
+            return writeFileObs(outFile, repoCommitsByMonthCsvs).pipe(
+                tap({
+                    next: () => console.log(`====>>>> Repos commits by month csv records written in file: ${outFile}`),
+                })
+            );
+        }),
     )
 }

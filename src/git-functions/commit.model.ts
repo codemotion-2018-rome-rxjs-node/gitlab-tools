@@ -5,7 +5,7 @@ export interface CommitCompact {
 }
 
 export interface CommitsByMonths {
-    [key: string]: {
+    [yearMonth: string]: {
         commits: CommitCompact[],
         authors: Set<string>
     }

@@ -5,3 +5,11 @@ export interface RepoCompact {
     commits: CommitCompact[];
     commitsByMonth: CommitsByMonths;
 }
+
+export interface ReposWithCommitsByMonths {
+    [yearMonth: string]: {
+        repoPath: string,
+        commits: CommitCompact[],
+        authors: string[]
+    }[]
+}

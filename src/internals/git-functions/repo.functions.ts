@@ -112,6 +112,9 @@ function yearMonthAsNumber(year: number, month: number) {
 export function repoCommitsByMonthRecords(reposByMonths: ReposWithCommitsByMonths) {
     const records: { [repoPath: string]: { [yearMonth: string]: number } } = {}
 
+    // sort here is required to make sure that the months are ordered - without this sort the months are not
+    // guaranteed to be ordered and therefore the csv records that can be generated downstream
+    // are not guaranteed to have the months ordered
     const allYearMonths = Object.keys(reposByMonths).sort().reduce((acc, yearMonth) => {
         acc[yearMonth] = 0
         return acc

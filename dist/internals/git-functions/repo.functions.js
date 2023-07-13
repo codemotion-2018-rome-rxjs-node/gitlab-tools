@@ -99,7 +99,10 @@ function yearMonthAsNumber(year, month) {
 // repoCommitsByMonthRecords returns a dictionary where the repo paths are the keys and the values are the commits grouped by month
 function repoCommitsByMonthRecords(reposByMonths) {
     const records = {};
-    const allYearMonths = Object.keys(reposByMonths).reduce((acc, yearMonth) => {
+    // sort here is required to make sure that the months are ordered - without this sort the months are not
+    // guaranteed to be ordered and therefore the csv records that can be generated downstream
+    // are not guaranteed to have the months ordered
+    const allYearMonths = Object.keys(reposByMonths).sort().reduce((acc, yearMonth) => {
         acc[yearMonth] = 0;
         return acc;
     }, {});

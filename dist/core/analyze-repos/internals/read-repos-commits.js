@@ -10,44 +10,46 @@ const repo_functions_1 = require("../../../internals/git-functions/repo.function
 const path_1 = __importDefault(require("path"));
 const observable_fs_1 = require("observable-fs");
 const csv_tools_1 = require("@enrico.piccinin/csv-tools");
-const config_1 = require("../../../internals/config");
 // readReposCommits reeads all the repos contained in a directory and returns an observable of an array of RepoCompact
-function readReposCommits(folderPath, outdir) {
+function readReposCommits(folderPath, outdir, concurrency = 1) {
     const repoPaths = (0, repos_in_folder_1.reposInFolder)(folderPath);
+    const folderName = path_1.default.basename(folderPath);
     return (0, rxjs_1.from)(repoPaths).pipe((0, rxjs_1.mergeMap)((repoPath) => {
         return (0, repo_functions_1.newRepoCompact)(repoPath);
-    }, config_1.Config.concurrency), (0, rxjs_1.toArray)(), (0, rxjs_1.concatMap)((repos) => {
-        const folderName = path_1.default.basename(folderPath);
+    }, concurrency), (0, rxjs_1.toArray)(), (0, rxjs_1.concatMap)((repos) => {
         const outFile = path_1.default.join(outdir, `${folderName}.json`);
-        return (0, observable_fs_1.writeFileObs)(outFile, [
-            // add a replacer function since JSON.stringify does not support Set
-            // https://stackoverflow.com/a/46491780/5699993
-            JSON.stringify(repos, (_key, value) => (value instanceof Set ? [...value] : value), 2)
-        ])
-            .pipe((0, rxjs_1.tap)({
-            next: () => console.log(`====>>>> Repos info written in file: ${outFile}`),
-        }), (0, rxjs_1.map)(() => repos));
+        return writeReposJson(repos, outFile);
     }), (0, rxjs_1.concatMap)((repos) => {
-        const repoCommitsByMonth = (0, repo_functions_1.groupRepoCommitsByMonth)(repos);
-        const folderName = path_1.default.basename(folderPath);
         const outFile = path_1.default.join(outdir, `${folderName}-repos-commits-by-month.json`);
-        return (0, observable_fs_1.writeFileObs)(outFile, [
-            // add a replacer function since JSON.stringify does not support Set
-            // https://stackoverflow.com/a/46491780/5699993
-            JSON.stringify(repoCommitsByMonth, null, 2)
-        ])
-            .pipe((0, rxjs_1.tap)({
-            next: () => console.log(`====>>>> Repos commits by month info written in file: ${outFile}`),
-        }), (0, rxjs_1.map)(() => repoCommitsByMonth));
+        const repoCommitsByMonth = (0, repo_functions_1.groupRepoCommitsByMonth)(repos);
+        return writeReposCommitsByMonthJson(repoCommitsByMonth, outFile);
     }), (0, rxjs_1.concatMap)((repoCommitsByMonth) => {
-        const repoCommitsByMonthRecs = (0, repo_functions_1.repoCommitsByMonthRecords)(repoCommitsByMonth);
-        const repoCommitsByMonthCsvs = (0, csv_tools_1.toCsv)(repoCommitsByMonthRecs);
-        const folderName = path_1.default.basename(folderPath);
         const outFile = path_1.default.join(outdir, `${folderName}-repos-commits-by-month.csv`);
-        return (0, observable_fs_1.writeFileObs)(outFile, repoCommitsByMonthCsvs).pipe((0, rxjs_1.tap)({
-            next: () => console.log(`====>>>> Repos commits by month csv records written in file: ${outFile}`),
-        }));
+        return writeReposCommitsByMonthCsv(repoCommitsByMonth, outFile);
     }));
 }
 exports.readReposCommits = readReposCommits;
+const writeReposJson = (repos, outFile) => {
+    return (0, observable_fs_1.writeFileObs)(outFile, [
+        // add a replacer function since JSON.stringify does not support Set
+        // https://stackoverflow.com/a/46491780/5699993
+        JSON.stringify(repos, (_key, value) => (value instanceof Set ? [...value] : value), 2)
+    ])
+        .pipe((0, rxjs_1.tap)({
+        next: () => console.log(`====>>>> Repos info written in file: ${outFile}`),
+    }), (0, rxjs_1.map)(() => repos));
+};
+const writeReposCommitsByMonthJson = (repoCommitsByMonth, outFile) => {
+    return (0, observable_fs_1.writeFileObs)(outFile, [JSON.stringify(repoCommitsByMonth, null, 2)])
+        .pipe((0, rxjs_1.tap)({
+        next: () => console.log(`====>>>> Repos commits by month info written in file: ${outFile}`),
+    }), (0, rxjs_1.map)(() => repoCommitsByMonth));
+};
+const writeReposCommitsByMonthCsv = (repoCommitsByMonth, outFile) => {
+    const repoCommitsByMonthRecs = (0, repo_functions_1.repoCommitsByMonthRecords)(repoCommitsByMonth);
+    const repoCommitsByMonthCsvs = (0, csv_tools_1.toCsv)(repoCommitsByMonthRecs);
+    return (0, observable_fs_1.writeFileObs)(outFile, repoCommitsByMonthCsvs).pipe((0, rxjs_1.tap)({
+        next: () => console.log(`====>>>> Repos commits by month csv records written in file: ${outFile}`),
+    }));
+};
 //# sourceMappingURL=read-repos-commits.js.map

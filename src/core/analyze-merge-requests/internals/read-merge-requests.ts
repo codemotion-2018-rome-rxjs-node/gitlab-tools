@@ -3,7 +3,7 @@ import { map } from "rxjs";
 
 import { MergeRequest, newMergeRequestCompact } from "./merge-request.model";
 import { runAnalysis } from "./analyze-merge-requests";
-import { runPagedCommand } from "../../gitlab-functions/paged-command";
+import { runPagedCommand } from "../../../internals/gitlab-functions/paged-command";
 
 export function readMergeRequestsForGroup(gitLabUrl: string, token: string, groupId: string) {
     const command = listMergeRequestsCommand(gitLabUrl, groupId)

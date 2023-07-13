@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { launchMergeRequestAnalysis } from '../analyze-merge-requests/launch-analysis';
+import { launchMergeRequestAnalysis } from '../core/analyze-merge-requests/launch-analysis';
 
 const command = process.argv[2];
 

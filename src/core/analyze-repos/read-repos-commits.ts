@@ -1,7 +1,7 @@
 import { concatMap, from, map, mergeMap, tap, toArray } from "rxjs";
 
-import { reposInFolder } from "../repos-functions/repos-in-folder";
-import { groupRepoCommitsByMonth, newRepoCompact } from "../git-functions/repo.functions";
+import { reposInFolder } from "../../internals/repos-functions/repos-in-folder";
+import { groupRepoCommitsByMonth, newRepoCompact } from "../../internals/git-functions/repo.functions";
 import path from "path";
 import { writeFileObs } from "observable-fs";
 

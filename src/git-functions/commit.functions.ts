@@ -1,6 +1,6 @@
 import { map, catchError, mergeMap, NEVER } from 'rxjs';
 import { executeCommandObs } from '../execute-command/execute-command';
-import { CommitCompact } from './commit.model';
+import { CommitCompact, CommitsByMonths } from './commit.model';
 
 // fetchCommit is a function that fetched all the commits from a git repo and returns the sha of each commit and its date
 
@@ -13,7 +13,7 @@ import { CommitCompact } from './commit.model';
 export function fetchCommits(repoPath: string) {
     if (!repoPath) throw new Error(`Path is mandatory`);
 
-    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad"`;
+    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
 
     return executeCommandObs(`Fetch commits`, command).pipe(
         map((commits: string) => commits.split('\n')),
@@ -30,8 +30,13 @@ export function fetchCommits(repoPath: string) {
 
 // newCommitCompact returns a new CommitCompact object with the given sha and date
 export function newCommitCompact(data: string) {
-    const shaDate = data.split(',')
-    return { sha: shaDate[0], date: new Date(shaDate[1]) } as CommitCompact
+    const shaDateAuthor = data.split(',')
+    const commit: CommitCompact = {
+        sha: shaDateAuthor[0],
+        date: new Date(shaDateAuthor[1]),
+        author: shaDateAuthor[2]
+    }
+    return commit
 }
 
 // commitsByMonth returns an array of CommitCompact objects grouped by month
@@ -44,10 +49,14 @@ export function commitsByMonth(commits: CommitCompact[]) {
         const year = commit.date.getFullYear()
         const key = `${year}-${month}`
         if (!acc[key]) {
-            acc[key] = []
+            acc[key] = {
+                commits: [],
+                authors: new Set<string>()
+            }
         }
-        acc[key].push(commit)
+        acc[key].commits.push(commit)
+        acc[key].authors.add(commit.author)
         return acc
-    }, {} as { [key: string]: CommitCompact[] })
+    }, {} as CommitsByMonths)
     return commitsByMonth
 }

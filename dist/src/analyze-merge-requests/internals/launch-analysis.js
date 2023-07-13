@@ -7,12 +7,12 @@ exports.launchMergRequestAnalysisInternal = void 0;
 const path_1 = __importDefault(require("path"));
 const rxjs_1 = require("rxjs");
 const xlsx_1 = __importDefault(require("xlsx"));
-const read_group_1 = require("../../gitlab-functions/read-group");
+const group_functions_1 = require("../../gitlab-functions/group-functions");
 const read_merge_requests_1 = require("./read-merge-requests");
 const to_excel_1 = require("./to-excel");
 function launchMergRequestAnalysisInternal(gitLabUrl, token, groupId, outdir) {
     let _name;
-    return (0, read_group_1.readGroup)(gitLabUrl, token, groupId).pipe((0, rxjs_1.concatMap)(group => {
+    return (0, group_functions_1.readGroup)(gitLabUrl, token, groupId).pipe((0, rxjs_1.concatMap)(group => {
         _name = group.name;
         return (0, read_merge_requests_1.runMergeRequestAnalysis)(gitLabUrl, token, groupId);
     }), (0, rxjs_1.map)(analysis => {

@@ -1,5 +1,5 @@
 import { map, catchError, EMPTY, concatMap, from } from 'rxjs';
-import { executeCommandObs } from '../execute-command/execute-command';
+import { executeCommandNewProcessToLinesObs } from '../execute-command/execute-command';
 import { CommitCompact, CommitsByMonths } from './commit.model';
 
 // fetchCommit is a function that fetched all the commits from a git repo and returns the sha of each commit and its date
@@ -15,14 +15,19 @@ export function fetchCommits(repoPath: string) {
 
     const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
 
-    return executeCommandObs(`Fetch commits`, command).pipe(
+    return executeCommandNewProcessToLinesObs(
+        `Fetch commits`, 'git', ['log', '--pretty=format:"%H,%ad,%an"'],
+        { cwd: repoPath }
+    ).pipe(
         map((commits: string) => commits.split('\n')),
-        concatMap((commits: string[]) => from(commits)),
+        concatMap((commits: string[]) => {
+            return from(commits)
+        }),
         map((commit: string) => {
             return newCommitCompact(commit)
         }),
-        catchError((err) => {
-            console.error(`Error: "fetchCommits" while executing command "${command}" - error ${JSON.stringify(err, null, 2)}`)
+        catchError((err: Error) => {
+            console.error(`Error: "fetchCommits" while executing command "${command}" - error ${err.stack}`)
             return EMPTY
         })
     );

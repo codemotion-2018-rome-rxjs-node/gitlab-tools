@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { launchMergeRequestAnalysis } from '../core/analyze-merge-requests/launch-merge-request-analysis';
-import { launchReadReposCommits } from '../core/analyze-repos/launch-read-repos-commits';
+import { launchReadReposCommits } from '../core/count-repos-commits/launch-count-repos-commits';
 import { launchCloneGroupProjects } from '../core/clone-group-repos/launch-clone-group-projects';
 
 const command = process.argv[2];

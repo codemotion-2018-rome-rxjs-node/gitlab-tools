@@ -26,11 +26,6 @@ or via npx
 
 It is possible to read the commit records of all repos contained in a folder (maybe after having cloned them with the `clone-group-projects` command).
 
-After reading the commits, the following files are created:
-- <folder-name>.json
-- <folder-name>-repos-commits-by-month.json
-- <folder-name>-repos-commits-by-month.csv
-
 To read the commits run the command
 
 `node ./dist/lib/command.js read-repos-commits --folderPath <path to folder> --outdir <outdir>`
@@ -38,6 +33,27 @@ To read the commits run the command
 or via npx
 
 ` npx @enrico.piccinin/gitlab-tools read-repos-commits --folderPath <path to folder> --outdir <outdir>`
+
+After reading the commits, the following files are created:
+- <folder-name>.json
+- <folder-name>-repos-commits-by-month.json
+- <folder-name>-repos-commits-by-month.csv
+
+# Calculate cloc (number of lines of code)
+
+It is possible to calculate the lines of code of all files in all repos contained in a folder (maybe after having cloned them with the `clone-group-projects` command).
+
+To calculate cloc run the command
+
+`node ./dist/lib/command.js cloc-repos --folderPath <path to folder> --outdir <outdir>`
+
+or via npx
+
+` npx @enrico.piccinin/gitlab-tools cloc-repos --folderPath <path to folder> --outdir <outdir>`
+
+This command produces the following files:
+- <folder-name>-cloc.json
+- <folder-name>-cloc.csv
 
 ## MISCELLANEOUS
 

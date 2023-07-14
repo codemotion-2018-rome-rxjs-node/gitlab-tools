@@ -13,10 +13,12 @@ function fetchCommits(repoPath) {
     if (!repoPath)
         throw new Error(`Path is mandatory`);
     const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
-    return (0, execute_command_1.executeCommandObs)(`Fetch commits`, command).pipe((0, rxjs_1.map)((commits) => commits.split('\n')), (0, rxjs_1.concatMap)((commits) => (0, rxjs_1.from)(commits)), (0, rxjs_1.map)((commit) => {
+    return (0, execute_command_1.executeCommandNewProcessToLinesObs)(`Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an'], { cwd: repoPath }).pipe((0, rxjs_1.map)((commits) => commits.split('\n')), (0, rxjs_1.concatMap)((commits) => {
+        return (0, rxjs_1.from)(commits);
+    }), (0, rxjs_1.map)((commit) => {
         return newCommitCompact(commit);
     }), (0, rxjs_1.catchError)((err) => {
-        console.error(`Error: "fetchCommits" while executing command "${command}" - error ${JSON.stringify(err, null, 2)}`);
+        console.error(`Error: "fetchCommits" while executing command "${command}" - error ${err.stack}`);
         return rxjs_1.EMPTY;
     }));
 }

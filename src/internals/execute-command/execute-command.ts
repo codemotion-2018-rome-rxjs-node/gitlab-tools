@@ -93,11 +93,11 @@ function bufferToLines() {
                     const bufferWithRemainder = `${remainder}${buffer}`;
                     const lines = bufferWithRemainder.toString().split('\n');
                     remainder = lines.splice(lines.length - 1)[0];
-                    lines.forEach((l) => subscriber.next(cleanLine(l)));
+                    lines.forEach((l) => subscriber.next(l));
                 },
                 error: (err) => subscriber.error(err),
                 complete: () => {
-                    subscriber.next(cleanLine(remainder));
+                    subscriber.next(remainder);
                     subscriber.complete();
                 },
             });
@@ -106,15 +106,6 @@ function bufferToLines() {
             };
         });
     };
-}
-function cleanLine(line: string) {
-    const firstChar = line.charAt(0);
-    const lastChar = line.charAt(line.length - 1);
-    if (firstChar !== '"' || lastChar !== '"') {
-        throw new Error(`line ${line} is not quoted`);
-    }
-    // remove quotes
-    return line.substring(1, line.length - 1);
 }
 
 export function executeCommandInShellNewProcessObs(

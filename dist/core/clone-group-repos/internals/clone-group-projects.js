@@ -12,9 +12,9 @@ function cloneGroupProjects(gitLabUrl, token, groupId, outdir) {
         console.log(`====>>>> number of projects read`, numProject);
     }), (0, rxjs_1.concatMap)(projects => projects), (0, rxjs_1.mergeMap)((project) => {
         return (0, project_functions_1.readProject)(gitLabUrl, token, project.id);
-    }, config_1.Config.concurrency), (0, rxjs_1.mergeMap)((projectCompact) => {
+    }, config_1.CONFIG.CONCURRENCY), (0, rxjs_1.mergeMap)((projectCompact) => {
         return (0, project_functions_1.cloneProject)(projectCompact, outdir);
-    }, config_1.Config.concurrency), (0, rxjs_1.toArray)(), (0, rxjs_1.tap)(repos => {
+    }, config_1.CONFIG.CONCURRENCY), (0, rxjs_1.toArray)(), (0, rxjs_1.tap)(repos => {
         console.log(`====>>>> cloned ${repos.length} repos in folder ${outdir}`);
         console.log(`====>>>> FAILED to clone ${numProject - repos.length} repos`);
     }));

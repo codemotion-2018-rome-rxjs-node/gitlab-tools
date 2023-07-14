@@ -16,7 +16,7 @@ export function fetchCommits(repoPath: string) {
     const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
 
     return executeCommandNewProcessToLinesObs(
-        `Fetch commits`, 'git', ['log', '--pretty=format:"%H,%ad,%an"'],
+        `Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an'],
         { cwd: repoPath }
     ).pipe(
         map((commits: string) => commits.split('\n')),

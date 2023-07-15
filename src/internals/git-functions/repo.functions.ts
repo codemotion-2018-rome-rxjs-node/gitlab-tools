@@ -4,6 +4,7 @@ import { executeCommandObs } from '../execute-command/execute-command';
 import { commitsByMonth, fetchCommits } from './commit.functions';
 import { RepoCompact } from './repo.model';
 import { ReposWithCommitsByMonths } from './repo.model';
+import { CommitCompact } from './commit.model';
 
 // cloneRepo clones a repo from a given url to a given path and returns the path of the cloned repo
 export function cloneRepo(url: string, repoPath: string, repoName: string) {
@@ -108,17 +109,17 @@ function yearMonthAsNumber(year: number, month: number) {
     return year * 100 + month
 }
 
-// repoCommitsByMonthRecords returns a dictionary where the repo paths are the keys and the values are the commits grouped by month
-export function repoCommitsByMonthRecords(reposByMonths: ReposWithCommitsByMonths) {
-    const records: { [repoPath: string]: { [yearMonth: string]: number } } = {}
+// repoCommitsByMonthRecordsDict returns a dictionary where the repo paths are the keys and the values are the commits grouped by month
+export function repoCommitsByMonthRecordsDict(reposByMonths: ReposWithCommitsByMonths) {
+    const records: { [repoPath: string]: { [yearMonth: string]: CommitCompact[] } } = {}
 
     // sort here is required to make sure that the months are ordered - without this sort the months are not
     // guaranteed to be ordered and therefore the csv records that can be generated downstream
     // are not guaranteed to have the months ordered
     const allYearMonths = Object.keys(reposByMonths).sort().reduce((acc, yearMonth) => {
-        acc[yearMonth] = 0
+        acc[yearMonth] = []
         return acc
-    }, {} as { [yearMonth: string]: number })
+    }, {} as { [yearMonth: string]: CommitCompact[] })
 
     const allReposPaths = Object.values(reposByMonths).reduce((acc, repos) => {
         repos.forEach((repo) => {
@@ -136,10 +137,30 @@ export function repoCommitsByMonthRecords(reposByMonths: ReposWithCommitsByMonth
     Object.entries(reposByMonths).forEach(([yearMonth, repos]) => {
         repos.forEach((repo) => {
             const rec = records[repo.repoPath]
-            rec[yearMonth] = repo.commits.length
+            rec[yearMonth] = repo.commits
         })
     })
-    return Object.entries(records).map(([repoPath, commitsByMonth]) => {
-        return { repoPath, ...commitsByMonth } as any
+    return records
+}
+
+// repoCommitsByMonthRecords returns an array of records that contain the repo path and the number of commits for each month
+// such records are used to generate the csv file
+export function repoCommitsByMonthRecords(reposByMonths: ReposWithCommitsByMonths) {
+    const recordDict: { [repoPath: string]: { [yearMonth: string]: number } } = {}
+    const _repoCommitsByMonthRecordsDict = repoCommitsByMonthRecordsDict(reposByMonths)
+
+    Object.entries(_repoCommitsByMonthRecordsDict).forEach(([repoPath, repoCommitsByMonth]) => {
+        const numOfCommitsByMonth: { [yearMonth: string]: number } = Object.entries(repoCommitsByMonth).reduce((acc, [yearMonth, commits]) => {
+            acc[yearMonth] = commits.length
+            return acc
+        }, {} as { [yearMonth: string]: number })
+
+        recordDict[repoPath] = { ...numOfCommitsByMonth }
     })
+
+    const records = Object.entries(recordDict).map(([repoPath, commitsByMonth]) => {
+        return { repoPath, ...commitsByMonth }
+    })
+
+    return records
 }

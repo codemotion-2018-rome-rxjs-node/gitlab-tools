@@ -27,13 +27,16 @@ export function clocOnRepos(folderPath: string, concurrency = CONFIG.CONCURRENCY
         mergeMap(({ repoPath, sha }) => {
             return runCloc(sha, repoPath).pipe(
                 map((clocStats) => {
+                    const sumStats = clocStats.find((clocStat) => clocStat.language === 'SUM');
+                    if (!sumStats) {
+                        throw new Error(`No SUM stats found for repo ${repoPath}`)
+                    }
+                    total.files += sumStats.files
+                    total.blank += sumStats.blank
+                    total.comment += sumStats.comment
+                    total.code += sumStats.code
                     // remove the item with the key language 'SUM'
                     clocStats = clocStats.filter((clocStat) => clocStat.language !== 'SUM');
-
-                    total.files += clocStats.reduce((acc, curr) => acc + curr.files, 0);
-                    total.blank += clocStats.reduce((acc, curr) => acc + curr.blank, 0);
-                    total.comment += clocStats.reduce((acc, curr) => acc + curr.comment, 0);
-                    total.code += clocStats.reduce((acc, curr) => acc + curr.code, 0);
 
                     const repoStats: RepoClocLanguageStats = { repoPath, clocStats }
                     return repoStats;

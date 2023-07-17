@@ -5,8 +5,6 @@
 export function functionThatWillBeChanged() {
     console.log('I am a line to keep unchanged - 1')
     console.log('I am a line to keep unchanged - 2')
-    console.log('I am a line to keep unchanged - 3')
-    console.log('I am a line to keep unchanged - 4')
 
 
     console.log('I have changed this line - 1')

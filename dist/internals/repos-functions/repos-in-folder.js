@@ -26,9 +26,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.reposInFolder = void 0;
+exports.reposInFolderObs = exports.reposInFolder = void 0;
 const fs = __importStar(require("fs"));
 const path_1 = __importDefault(require("path"));
+const rxjs_1 = require("rxjs");
+const repo_functions_1 = require("../git-functions/repo.functions");
 // reposInFolder returns the list of git repos paths in a given folder
 function reposInFolder(folderPath) {
     let gitRepos = [];
@@ -46,4 +48,11 @@ function reposInFolder(folderPath) {
     return gitRepos;
 }
 exports.reposInFolder = reposInFolder;
+function reposInFolderObs(folderPath, concurrency = 1) {
+    const repoPaths = reposInFolder(folderPath);
+    return (0, rxjs_1.from)(repoPaths).pipe((0, rxjs_1.mergeMap)((repoPath) => {
+        return (0, repo_functions_1.newRepoCompact)(repoPath);
+    }, concurrency), (0, rxjs_1.toArray)());
+}
+exports.reposInFolderObs = reposInFolderObs;
 //# sourceMappingURL=repos-in-folder.js.map

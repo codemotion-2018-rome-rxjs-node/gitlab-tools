@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.repoCommitsByMonthRecords = exports.fillMissingMonths = exports.groupRepoCommitsByMonth = exports.newRepoCompact = exports.cloneRepo = void 0;
+exports.repoCommitsByMonthRecords = exports.repoCommitsByMonthRecordsDict = exports.fillMissingMonths = exports.groupRepoCommitsByMonth = exports.newRepoCompact = exports.cloneRepo = void 0;
 const rxjs_1 = require("rxjs");
 const execute_command_1 = require("../execute-command/execute-command");
 const commit_functions_1 = require("./commit.functions");
@@ -96,14 +96,14 @@ function getMinMax(arr) {
 function yearMonthAsNumber(year, month) {
     return year * 100 + month;
 }
-// repoCommitsByMonthRecords returns a dictionary where the repo paths are the keys and the values are the commits grouped by month
-function repoCommitsByMonthRecords(reposByMonths) {
+// repoCommitsByMonthRecordsDict returns a dictionary where the repo paths are the keys and the values are the commits grouped by month
+function repoCommitsByMonthRecordsDict(reposByMonths) {
     const records = {};
     // sort here is required to make sure that the months are ordered - without this sort the months are not
     // guaranteed to be ordered and therefore the csv records that can be generated downstream
     // are not guaranteed to have the months ordered
     const allYearMonths = Object.keys(reposByMonths).sort().reduce((acc, yearMonth) => {
-        acc[yearMonth] = 0;
+        acc[yearMonth] = [];
         return acc;
     }, {});
     const allReposPaths = Object.values(reposByMonths).reduce((acc, repos) => {
@@ -120,12 +120,28 @@ function repoCommitsByMonthRecords(reposByMonths) {
     Object.entries(reposByMonths).forEach(([yearMonth, repos]) => {
         repos.forEach((repo) => {
             const rec = records[repo.repoPath];
-            rec[yearMonth] = repo.commits.length;
+            rec[yearMonth] = repo.commits;
         });
     });
-    return Object.entries(records).map(([repoPath, commitsByMonth]) => {
+    return records;
+}
+exports.repoCommitsByMonthRecordsDict = repoCommitsByMonthRecordsDict;
+// repoCommitsByMonthRecords returns an array of records that contain the repo path and the number of commits for each month
+// such records are used to generate the csv file
+function repoCommitsByMonthRecords(reposByMonths) {
+    const recordDict = {};
+    const _repoCommitsByMonthRecordsDict = repoCommitsByMonthRecordsDict(reposByMonths);
+    Object.entries(_repoCommitsByMonthRecordsDict).forEach(([repoPath, repoCommitsByMonth]) => {
+        const numOfCommitsByMonth = Object.entries(repoCommitsByMonth).reduce((acc, [yearMonth, commits]) => {
+            acc[yearMonth] = commits.length;
+            return acc;
+        }, {});
+        recordDict[repoPath] = Object.assign({}, numOfCommitsByMonth);
+    });
+    const records = Object.entries(recordDict).map(([repoPath, commitsByMonth]) => {
         return Object.assign({ repoPath }, commitsByMonth);
     });
+    return records;
 }
 exports.repoCommitsByMonthRecords = repoCommitsByMonthRecords;
 //# sourceMappingURL=repo.functions.js.map

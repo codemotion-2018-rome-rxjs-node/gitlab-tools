@@ -16,7 +16,7 @@ describe('clocOnRepos', () => {
             (0, chai_1.expect)(statsForThisRepo instanceof Array).to.be.true;
             (0, chai_1.expect)(statsForThisRepo.length).greaterThan(0);
             (0, chai_1.expect)(!!statsForThisRepo[0].language).to.be.true;
-            (0, chai_1.expect)(!!statsForThisRepo[0].files).to.be.true;
+            (0, chai_1.expect)(!!statsForThisRepo[0].nFiles).to.be.true;
             (0, chai_1.expect)(!!statsForThisRepo[0].blank).to.be.true;
             (0, chai_1.expect)(!!statsForThisRepo[0].comment).to.be.true;
             (0, chai_1.expect)(!!statsForThisRepo[0].code).to.be.true;
@@ -24,7 +24,7 @@ describe('clocOnRepos', () => {
             (0, chai_1.expect)(total instanceof Array).to.be.true;
             (0, chai_1.expect)(total.length).greaterThan(0);
             (0, chai_1.expect)(!!total[0].language).to.be.true;
-            (0, chai_1.expect)(!!total[0].files).to.be.true;
+            (0, chai_1.expect)(!!total[0].nFiles).to.be.true;
             (0, chai_1.expect)(!!total[0].blank).to.be.true;
             (0, chai_1.expect)(!!total[0].comment).to.be.true;
             (0, chai_1.expect)(!!total[0].code).to.be.true;

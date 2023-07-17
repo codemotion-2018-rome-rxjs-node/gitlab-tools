@@ -55,6 +55,23 @@ This command produces the following files:
 - <folder-name>-cloc.json
 - <folder-name>-cloc.csv
 
+# Calculate the monthly diffences in the code base of repos
+
+It is possible to calculate the difference in the code base of a list of repos. The difference is calculated at a monthly bases.
+
+The repos considered are all the git repos contained in a folder.
+
+To calculate cloc diff run the command
+
+`node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir>`
+
+or via npx
+
+` npx @enrico.piccinin/gitlab-tools cloc-diff-repos --folderPath <path to folder> --outdir <outdir>`
+
+This command produces the following files:
+- <folder-name>-cloc-diff.json
+
 ## MISCELLANEOUS
 
 gitlab-tools is a node app configured to use Typescript scaffolded using the package `@enrico.piccinin/create-node-ts-app`.

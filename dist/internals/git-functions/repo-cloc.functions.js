@@ -11,7 +11,7 @@ const commit_functions_1 = require("./commit.functions");
 function clocOnRepos(folderPath, concurrency = config_1.CONFIG.CONCURRENCY) {
     const total = {
         language: 'TOTAL',
-        files: 0,
+        nFiles: 0,
         blank: 0,
         comment: 0,
         code: 0,
@@ -20,12 +20,16 @@ function clocOnRepos(folderPath, concurrency = config_1.CONFIG.CONCURRENCY) {
         return (0, commit_functions_1.fetchCommits)(repoPath).pipe((0, rxjs_1.first)(), (0, rxjs_1.map)((commit) => ({ repoPath, sha: commit.sha })));
     }), (0, rxjs_1.mergeMap)(({ repoPath, sha }) => {
         return (0, cloc_functions_1.runCloc)(sha, repoPath).pipe((0, rxjs_1.map)((clocStats) => {
+            const sumStats = clocStats.find((clocStat) => clocStat.language === 'SUM');
+            if (!sumStats) {
+                throw new Error(`No SUM stats found for repo ${repoPath}`);
+            }
+            total.nFiles += sumStats.nFiles;
+            total.blank += sumStats.blank;
+            total.comment += sumStats.comment;
+            total.code += sumStats.code;
             // remove the item with the key language 'SUM'
             clocStats = clocStats.filter((clocStat) => clocStat.language !== 'SUM');
-            total.files += clocStats.reduce((acc, curr) => acc + curr.files, 0);
-            total.blank += clocStats.reduce((acc, curr) => acc + curr.blank, 0);
-            total.comment += clocStats.reduce((acc, curr) => acc + curr.comment, 0);
-            total.code += clocStats.reduce((acc, curr) => acc + curr.code, 0);
             const repoStats = { repoPath, clocStats };
             return repoStats;
         }));

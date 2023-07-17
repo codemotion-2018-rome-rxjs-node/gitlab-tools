@@ -15,7 +15,7 @@ describe('clocOnRepos', () => {
             expect(statsForThisRepo instanceof Array).to.be.true;
             expect(statsForThisRepo.length).greaterThan(0);
             expect(!!statsForThisRepo[0].language).to.be.true;
-            expect(!!statsForThisRepo[0].files).to.be.true;
+            expect(!!statsForThisRepo[0].nFiles).to.be.true;
             expect(!!statsForThisRepo[0].blank).to.be.true;
             expect(!!statsForThisRepo[0].comment).to.be.true;
             expect(!!statsForThisRepo[0].code).to.be.true;
@@ -24,7 +24,7 @@ describe('clocOnRepos', () => {
             expect(total instanceof Array).to.be.true;
             expect(total.length).greaterThan(0);
             expect(!!total[0].language).to.be.true;
-            expect(!!total[0].files).to.be.true;
+            expect(!!total[0].nFiles).to.be.true;
             expect(!!total[0].blank).to.be.true;
             expect(!!total[0].comment).to.be.true;
             expect(!!total[0].code).to.be.true;

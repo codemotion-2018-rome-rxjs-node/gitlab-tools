@@ -8,7 +8,7 @@ describe('runCloc', () => {
             expect(stats instanceof Array).to.be.true;
             expect(stats.length).greaterThan(0);
             expect(!!stats[0].language).to.be.true;
-            expect(!!stats[0].files).to.be.true;
+            expect(!!stats[0].nFiles).to.be.true;
             expect(!!stats[0].blank).to.be.true;
             expect(!!stats[0].comment).to.be.true;
             expect(!!stats[0].code).to.be.true;
@@ -20,7 +20,7 @@ describe('runCloc', () => {
         runCloc('./src').subscribe((stats) => {
             const typescriptStats = stats.find((stat) => stat.language === 'TypeScript');
             expect(!!typescriptStats).to.be.true;
-            expect(typescriptStats!.files).greaterThan(0);
+            expect(typescriptStats!.nFiles).greaterThan(0);
             expect(typescriptStats!.blank).greaterThan(0);
             expect(typescriptStats!.comment).greaterThan(0);
             expect(typescriptStats!.code).greaterThan(0);
@@ -32,7 +32,7 @@ describe('runCloc', () => {
         runCloc('cf36b3fcc51b81482a3a5af5c531c5158b46d42c').subscribe((stats) => {
             const typescriptStats = stats.find((stat) => stat.language === 'TypeScript');
             expect(!!typescriptStats).to.be.true;
-            expect(typescriptStats!.files).greaterThan(0);
+            expect(typescriptStats!.nFiles).greaterThan(0);
             expect(typescriptStats!.blank).greaterThan(0);
             expect(typescriptStats!.comment).greaterThan(0);
             expect(typescriptStats!.code).greaterThan(0);

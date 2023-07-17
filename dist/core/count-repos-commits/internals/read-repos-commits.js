@@ -13,7 +13,7 @@ const repo_functions_1 = require("../../../internals/git-functions/repo.function
 // readReposCommits reeads all the repos contained in a directory and returns an observable of an array of RepoCompact
 function readReposCommits(folderPath, outdir, concurrency = 1) {
     const folderName = path_1.default.basename(folderPath);
-    return reposInFolderObs(folderPath, concurrency).pipe((0, rxjs_1.concatMap)((repos) => {
+    return (0, repos_in_folder_1.reposInFolderObs)(folderPath, concurrency).pipe((0, rxjs_1.concatMap)((repos) => {
         const outFile = path_1.default.join(outdir, `${folderName}.json`);
         return writeReposJson(repos, outFile);
     }), (0, rxjs_1.concatMap)((repos) => {
@@ -26,12 +26,6 @@ function readReposCommits(folderPath, outdir, concurrency = 1) {
     }));
 }
 exports.readReposCommits = readReposCommits;
-function reposInFolderObs(folderPath, concurrency = 1) {
-    const repoPaths = (0, repos_in_folder_1.reposInFolder)(folderPath);
-    return (0, rxjs_1.from)(repoPaths).pipe((0, rxjs_1.mergeMap)((repoPath) => {
-        return (0, repo_functions_1.newRepoCompact)(repoPath);
-    }, concurrency), (0, rxjs_1.toArray)());
-}
 const writeReposJson = (repos, outFile) => {
     return (0, observable_fs_1.writeFileObs)(outFile, [
         // add a replacer function since JSON.stringify does not support Set

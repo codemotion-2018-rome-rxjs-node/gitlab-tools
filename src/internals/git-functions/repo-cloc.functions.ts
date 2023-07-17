@@ -12,7 +12,7 @@ import { ClocLanguageStats } from "../cloc-functions/cloc.model";
 export function clocOnRepos(folderPath: string, concurrency = CONFIG.CONCURRENCY) {
     const total: ClocLanguageStats = {
         language: 'TOTAL',
-        files: 0,
+        nFiles: 0,
         blank: 0,
         comment: 0,
         code: 0,
@@ -31,7 +31,7 @@ export function clocOnRepos(folderPath: string, concurrency = CONFIG.CONCURRENCY
                     if (!sumStats) {
                         throw new Error(`No SUM stats found for repo ${repoPath}`)
                     }
-                    total.files += sumStats.files
+                    total.nFiles += sumStats.nFiles
                     total.blank += sumStats.blank
                     total.comment += sumStats.comment
                     total.code += sumStats.code

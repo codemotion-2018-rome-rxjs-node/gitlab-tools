@@ -70,3 +70,19 @@ export function buildClocDiffAllCommand(
     const commitsFilter = `${mostRecentCommit}  ${leastRecentCommit}`
     return `${cdCommand} && ${clocDiffAllCommand} ${languageFilter} ${commitsFilter}`
 }
+
+
+// this is the last hash at the moment of the start of the cloc diff test
+// 3d299a4175f5501b6ed009114deed7017c10be1f
+// I will add 3 files in the folder diff-test under the folder src:
+// - file-to-keep-unchaged.ts
+// - file-to-change.ts
+// - file-to-delete.ts
+//
+// Then in the next commit I will:
+// - delete file-to-delete.ts 
+// - I will change the file-to-change.ts by
+//      - adding 3 code lines
+//      - removing 2 code lines
+//      - changing 1 code line
+// - I will add file-added.ts in the folder diff-test - 

@@ -128,11 +128,15 @@ export function calculateMonthlyClocGitDiffs(
     const repoPath = repoMonthlyCommitPairs.repoPath
     return from(Object.entries(repoMonthlyCommitPairs.commitPairs)).pipe(
         mergeMap(([yearMonth, commitPair]: [string, CommitPair]) => {
+            console.log(`Starting diff for ${yearMonth}-${repoPath}`)
             const diffObs = commitPair ?
                 runClocDiff(commitPair[0].sha, commitPair[1].sha, languages, repoPath) :
                 of(noDiffsClocDiffStats(languages))
             return diffObs.pipe(
-                map(clocDiff => ({ yearMonth, clocDiff })
+                map(clocDiff => {
+                    console.log(`Completed diff for ${yearMonth}-${repoPath}`)
+                    return { yearMonth, clocDiff }
+                }
                 ))
         }, CONFIG.CONCURRENCY),
         reduce((acc, { yearMonth, clocDiff }) => {

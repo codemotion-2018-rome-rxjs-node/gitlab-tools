@@ -63,11 +63,13 @@ The repos considered are all the git repos contained in a folder.
 
 To calculate cloc diff run the command
 
-`node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir>`
+`node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...>`
+
+`node ./dist/lib/command.js cloc-diff-repos --folderPath ./ --outdir ./out --languages "TypeScript" "Markdown"`
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools cloc-diff-repos --folderPath <path to folder> --outdir <outdir>`
+` npx @enrico.piccinin/gitlab-tools cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...>`
 
 This command produces the following files:
 - <folder-name>-cloc-diff.json

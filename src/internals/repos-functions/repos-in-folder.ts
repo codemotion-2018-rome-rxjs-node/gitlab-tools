@@ -1,7 +1,5 @@
 import * as fs from 'fs';
 import path from 'path';
-import { from, mergeMap, toArray } from 'rxjs';
-import { newRepoCompact } from '../git-functions/repo.functions';
 
 // reposInFolder returns the list of git repos paths in a given folder
 export function reposInFolder(folderPath: string) {
@@ -18,14 +16,4 @@ export function reposInFolder(folderPath: string) {
         }
     });
     return gitRepos
-}
-
-export function reposInFolderObs(folderPath: string, concurrency = 1) {
-    const repoPaths = reposInFolder(folderPath);
-    return from(repoPaths).pipe(
-        mergeMap((repoPath) => {
-            return newRepoCompact(repoPath)
-        }, concurrency),
-        toArray(),
-    )
 }

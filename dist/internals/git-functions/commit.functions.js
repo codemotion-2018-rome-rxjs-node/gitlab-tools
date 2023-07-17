@@ -9,7 +9,7 @@ const execute_command_1 = require("../execute-command/execute-command");
 // It returns an observable of an array of strings
 // Each string is a commit sha and date separated by a comma
 // The observable is an error if the command fails
-function fetchCommits(repoPath) {
+function fetchCommits(repoPath, fromDate = new Date(0), toDate = new Date(Date.now())) {
     if (!repoPath)
         throw new Error(`Path is mandatory`);
     const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
@@ -17,6 +17,8 @@ function fetchCommits(repoPath) {
         return (0, rxjs_1.from)(commits);
     }), (0, rxjs_1.map)((commit) => {
         return newCommitCompact(commit);
+    }), (0, rxjs_1.filter)((commit) => {
+        return commit.date >= fromDate && commit.date <= toDate;
     }), (0, rxjs_1.catchError)((err) => {
         console.error(`Error: "fetchCommits" while executing command "${command}" - error ${err.stack}`);
         return rxjs_1.EMPTY;

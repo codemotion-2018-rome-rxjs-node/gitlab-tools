@@ -5,9 +5,9 @@ import { calculateMonthlyClocDiffsOnRepos } from "./internals/cloc-diff-repos";
 export function launchClocDiffRepos() {
     console.log('====>>>> Launching Cloc diff on Repos')
 
-    const { folderPath, outdir, languages } = readParams();
+    const { folderPath, outdir, languages, from, to } = readParams();
 
-    calculateMonthlyClocDiffsOnRepos(folderPath, outdir, languages).subscribe()
+    calculateMonthlyClocDiffsOnRepos(folderPath, outdir, languages, from, to).subscribe()
 }
 
 function readParams() {
@@ -27,11 +27,21 @@ function readParams() {
             '--languages <string...>',
             `a space separated list of languages to be considered in the diff (e.g. --languages "Java" "Python")
              - default is the empty list which means all languages`,
+        )
+        .option(
+            '--from <string>',
+            `the date from which we start the analysis - default is the beginning of the Unix epoch, i.e. 1970-01-01`,
+        )
+        .option(
+            '--to <string>',
+            `the date until which we run the analysis - default is the current date`,
         );
 
     const _options = program.parse(process.argv).opts();
     const outdir = _options.outdir || process.cwd();
     const languages = _options.languages || [];
+    const from = _options.from ? new Date(_options.from) : new Date(0);
+    const to = _options.to ? new Date(_options.to) : new Date(Date.now());
 
-    return { folderPath: _options.folderPath, outdir, languages };
+    return { folderPath: _options.folderPath, outdir, languages, from, to };
 }

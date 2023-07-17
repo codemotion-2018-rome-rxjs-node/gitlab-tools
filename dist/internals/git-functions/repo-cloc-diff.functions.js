@@ -116,10 +116,14 @@ exports.reposCommitsPairsDiff = reposCommitsPairsDiff;
 function calculateMonthlyClocGitDiffs(repoMonthlyCommitPairs, languages) {
     const repoPath = repoMonthlyCommitPairs.repoPath;
     return (0, rxjs_1.from)(Object.entries(repoMonthlyCommitPairs.commitPairs)).pipe((0, rxjs_1.mergeMap)(([yearMonth, commitPair]) => {
+        console.log(`Starting diff for ${yearMonth}-${repoPath}`);
         const diffObs = commitPair ?
             (0, cloc_diff_functions_1.runClocDiff)(commitPair[0].sha, commitPair[1].sha, languages, repoPath) :
             (0, rxjs_1.of)((0, cloc_diff_model_1.noDiffsClocDiffStats)(languages));
-        return diffObs.pipe((0, rxjs_1.map)(clocDiff => ({ yearMonth, clocDiff })));
+        return diffObs.pipe((0, rxjs_1.map)(clocDiff => {
+            console.log(`Completed diff for ${yearMonth}-${repoPath}`);
+            return { yearMonth, clocDiff };
+        }));
     }, config_1.CONFIG.CONCURRENCY), (0, rxjs_1.reduce)((acc, { yearMonth, clocDiff }) => {
         acc[yearMonth] = clocDiff;
         return acc;

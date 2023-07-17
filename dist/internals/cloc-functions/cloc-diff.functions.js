@@ -6,8 +6,8 @@ const config_1 = require("../config");
 const execute_command_1 = require("../execute-command/execute-command");
 // runClocDiff is a function that runs the cloc command to calculate the differences (restricted to the selected languages) between 
 // 2 commits of the same repo and returns the result in the form of a ClocDiffLanguageStats array
-function runClocDiff(mostRecentCommit, leastRecentCommit, languages, folderPath = './') {
-    const cmd = buildClocDiffAllCommand(mostRecentCommit, leastRecentCommit, languages, folderPath);
+function runClocDiff(leastRecentCommit, mostRecentCommit, languages, folderPath = './') {
+    const cmd = buildClocDiffAllCommand(leastRecentCommit, mostRecentCommit, languages, folderPath);
     // #todo - check if we need to specify { encoding: 'utf-8' } as an argument
     return (0, execute_command_1.executeCommandObs)('run cloc --git-diff-all', cmd).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.map)((linesFromStdOutAndStdErr) => {
         let output = '';
@@ -45,13 +45,13 @@ function runClocDiff(mostRecentCommit, leastRecentCommit, languages, folderPath 
     }));
 }
 exports.runClocDiff = runClocDiff;
-function buildClocDiffAllCommand(mostRecentCommit, leastRecentCommit, languages, folderPath = './') {
+function buildClocDiffAllCommand(leastRecentCommit, mostRecentCommit, languages, folderPath = './') {
     const cdCommand = `cd ${folderPath}`;
-    // const clocDiffAllCommand = `cloc --git-diff-all --json --timeout=${CONFIG.CLOC_TIMEOUT}`
-    const clocDiffAllCommand = `cloc --diff --json --timeout=${config_1.CONFIG.CLOC_TIMEOUT}`;
+    const clocDiffAllCommand = `cloc --git-diff-all --json --timeout=${config_1.CONFIG.CLOC_TIMEOUT}`;
+    // const clocDiffAllCommand = `cloc --diff --json --timeout=${CONFIG.CLOC_TIMEOUT}`
     const languagesString = languages.join(',');
     const languageFilter = languages.length > 0 ? `--include-lang=${languagesString}` : '';
-    const commitsFilter = `${mostRecentCommit}  ${leastRecentCommit}`;
+    const commitsFilter = `${leastRecentCommit}  ${mostRecentCommit}`;
     return `${cdCommand} && ${clocDiffAllCommand} ${languageFilter} ${commitsFilter}`;
 }
 exports.buildClocDiffAllCommand = buildClocDiffAllCommand;

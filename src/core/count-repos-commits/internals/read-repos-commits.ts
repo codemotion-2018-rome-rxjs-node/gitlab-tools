@@ -4,16 +4,16 @@ import { concatMap, map, tap } from "rxjs";
 import { writeFileObs } from "observable-fs";
 import { toCsv } from "@enrico.piccinin/csv-tools";
 
-import { reposInFolderObs } from "../../../internals/repos-functions/repos-in-folder";
+import { reposInFolderObs } from "../../../internals/git-functions/repo.functions";
 import { groupRepoCommitsByMonth, repoCommitsByMonthRecords } from "../../../internals/git-functions/repo.functions";
 
 import { RepoCompact, ReposWithCommitsByMonths } from "../../../internals/git-functions/repo.model";
 
 // readReposCommits reeads all the repos contained in a directory and returns an observable of an array of RepoCompact
-export function readReposCommits(folderPath: string, outdir: string, concurrency = 1) {
+export function readReposCommits(folderPath: string, outdir: string, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = 1) {
     const folderName = path.basename(folderPath);
 
-    return reposInFolderObs(folderPath, concurrency).pipe(
+    return reposInFolderObs(folderPath, fromDate, toDate, concurrency).pipe(
         concatMap((repos) => {
             const outFile = path.join(outdir, `${folderName}.json`);
             return writeReposJson(repos, outFile)

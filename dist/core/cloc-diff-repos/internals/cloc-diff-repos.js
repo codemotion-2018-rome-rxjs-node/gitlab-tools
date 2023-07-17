@@ -10,12 +10,12 @@ const rxjs_1 = require("rxjs");
 const config_1 = require("../../../internals/config");
 const repo_cloc_diff_functions_1 = require("../../../internals/git-functions/repo-cloc-diff.functions");
 const repo_functions_1 = require("../../../internals/git-functions/repo.functions");
-const repos_in_folder_1 = require("../../../internals/repos-functions/repos-in-folder");
+const repo_functions_2 = require("../../../internals/git-functions/repo.functions");
 // calculateMonthlyClocDiffsOnRepos is a function that calculates the monthly cloc diffs on the repos contained in a folder
 // for the selected languages and write the results as a json file and as a csv file
-function calculateMonthlyClocDiffsOnRepos(folderPath, outdir, languages, concurrency = config_1.CONFIG.CONCURRENCY) {
+function calculateMonthlyClocDiffsOnRepos(folderPath, outdir, languages, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = config_1.CONFIG.CONCURRENCY) {
     const folderName = path_1.default.basename(folderPath);
-    return (0, repos_in_folder_1.reposInFolderObs)(folderPath).pipe((0, rxjs_1.concatMap)((repos) => {
+    return (0, repo_functions_2.reposInFolderObs)(folderPath, fromDate, toDate).pipe((0, rxjs_1.concatMap)((repos) => {
         const reposCommits = (0, repo_functions_1.groupRepoCommitsByMonth)(repos);
         const reposCommitsDict = (0, repo_functions_1.repoCommitsByMonthRecordsDict)(reposCommits);
         const repoMonthlyCommitPairs = (0, repo_cloc_diff_functions_1.reposCommitsPairsDiff)(reposCommitsDict);

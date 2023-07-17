@@ -1,4 +1,4 @@
-import { map, catchError, EMPTY, concatMap, from } from 'rxjs';
+import { map, catchError, EMPTY, concatMap, from, filter } from 'rxjs';
 import { executeCommandNewProcessToLinesObs } from '../execute-command/execute-command';
 import { CommitCompact, CommitsByMonths } from './commit.model';
 
@@ -10,7 +10,7 @@ import { CommitCompact, CommitsByMonths } from './commit.model';
 // It returns an observable of an array of strings
 // Each string is a commit sha and date separated by a comma
 // The observable is an error if the command fails
-export function fetchCommits(repoPath: string) {
+export function fetchCommits(repoPath: string, fromDate = new Date(0), toDate = new Date(Date.now())) {
     if (!repoPath) throw new Error(`Path is mandatory`);
 
     const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
@@ -25,6 +25,9 @@ export function fetchCommits(repoPath: string) {
         }),
         map((commit: string) => {
             return newCommitCompact(commit)
+        }),
+        filter((commit: CommitCompact) => {
+            return commit.date >= fromDate && commit.date <= toDate
         }),
         catchError((err: Error) => {
             console.error(`Error: "fetchCommits" while executing command "${command}" - error ${err.stack}`)

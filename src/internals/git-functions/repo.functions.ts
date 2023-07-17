@@ -1,10 +1,10 @@
-import { EMPTY, catchError, map, tap, toArray } from 'rxjs';
+import { EMPTY, catchError, from, map, mergeMap, tap, toArray } from 'rxjs';
 
 import { executeCommandObs } from '../execute-command/execute-command';
 import { commitsByMonth, fetchCommits } from './commit.functions';
-import { RepoCompact } from './repo.model';
-import { ReposWithCommitsByMonths } from './repo.model';
+import { RepoCompact, ReposWithCommitsByMonths } from './repo.model';
 import { CommitCompact } from './commit.model';
+import { reposInFolder } from '../repos-functions/repos-in-folder';
 
 // cloneRepo clones a repo from a given url to a given path and returns the path of the cloned repo
 export function cloneRepo(url: string, repoPath: string, repoName: string) {
@@ -24,9 +24,21 @@ export function cloneRepo(url: string, repoPath: string, repoName: string) {
     );
 }
 
+// reposInFolderObs returns an Observable that notifies the list of RepoCompact objects representing
+// all the repos in a given folder
+export function reposInFolderObs(folderPath: string, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = 1) {
+    const repoPaths = reposInFolder(folderPath);
+    return from(repoPaths).pipe(
+        mergeMap((repoPath) => {
+            return newRepoCompact(repoPath, fromDate, toDate)
+        }, concurrency),
+        toArray(),
+    )
+}
+
 // newRepoCompact returns an Observable that notifies a new RepoCompact filled with its commits sorted by date ascending
-export function newRepoCompact(repoPath: string) {
-    return fetchCommits(repoPath).pipe(
+export function newRepoCompact(repoPath: string, fromDate = new Date(0), toDate = new Date(Date.now())) {
+    return fetchCommits(repoPath, fromDate, toDate).pipe(
         toArray(),
         map((commits) => {
             const commitsSorted = commits.sort((a, b) => a.date.getTime() - b.date.getTime());

@@ -8,8 +8,9 @@ export function functionThatWillBeChanged() {
     console.log('I am a line to keep unchanged - 3')
     console.log('I am a line to keep unchanged - 4')
 
-    console.log('I am a line to be removed - 1')
-    console.log('I am a line to be removed - 2')
 
-    console.log('I am a line to be changed - 1')
+    console.log('I have changed this line - 1')
+    console.log('Line of code added - 1')
+    console.log('Line of code added - 2')
+    console.log('Line of code added - 3')
 }

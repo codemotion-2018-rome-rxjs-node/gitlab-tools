@@ -63,7 +63,8 @@ export function buildClocDiffAllCommand(
     folderPath = './'
 ) {
     const cdCommand = `cd ${folderPath}`
-    const clocDiffAllCommand = `cloc --git-diff-all --json --timeout=${CONFIG.CLOC_TIMEOUT}`
+    // const clocDiffAllCommand = `cloc --git-diff-all --json --timeout=${CONFIG.CLOC_TIMEOUT}`
+    const clocDiffAllCommand = `cloc --diff --json --timeout=${CONFIG.CLOC_TIMEOUT}`
     const languagesString = languages.join(',')
     const languageFilter = languages.length > 0 ? `--include-lang=${languagesString}` : ''
     const commitsFilter = `${mostRecentCommit}  ${leastRecentCommit}`

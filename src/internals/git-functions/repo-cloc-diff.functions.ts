@@ -1,6 +1,6 @@
 import { from, map, mergeMap, of, reduce } from "rxjs"
 import { runClocDiff } from "../cloc-functions/cloc-diff.functions"
-import { ClocDiffStats, noDiffsClocDiffStats } from "../cloc-functions/cloc-diff.model"
+import { ClocDiffStats, RepoClocDiffStats, noDiffsClocDiffStats } from "../cloc-functions/cloc-diff.model"
 import { CommitCompact } from "./commit.model"
 import { CommitPair } from "./repo-cloc-diff.model"
 import { CONFIG } from "../config"
@@ -143,6 +143,9 @@ export function calculateMonthlyClocGitDiffs(
             acc[yearMonth] = clocDiff
             return acc
         }, {} as { [yearMonth: string]: ClocDiffStats }),
-        map(clocDiffStats => ({ repoPath, clocDiffStats }))
+        map(clocDiffStats => {
+            const repoClocDiffStats: RepoClocDiffStats = { repoPath, clocDiffStats }
+            return repoClocDiffStats
+        })
     )
 }

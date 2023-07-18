@@ -127,7 +127,10 @@ function calculateMonthlyClocGitDiffs(repoMonthlyCommitPairs, languages) {
     }, config_1.CONFIG.CONCURRENCY), (0, rxjs_1.reduce)((acc, { yearMonth, clocDiff }) => {
         acc[yearMonth] = clocDiff;
         return acc;
-    }, {}), (0, rxjs_1.map)(clocDiffStats => ({ repoPath, clocDiffStats })));
+    }, {}), (0, rxjs_1.map)(clocDiffStats => {
+        const repoClocDiffStats = { repoPath, clocDiffStats };
+        return repoClocDiffStats;
+    }));
 }
 exports.calculateMonthlyClocGitDiffs = calculateMonthlyClocGitDiffs;
 //# sourceMappingURL=repo-cloc-diff.functions.js.map

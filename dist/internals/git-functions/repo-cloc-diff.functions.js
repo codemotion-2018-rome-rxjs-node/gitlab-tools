@@ -118,6 +118,7 @@ function calculateMonthlyClocGitDiffs(repoMonthlyCommitPairs, languages) {
     return (0, rxjs_1.from)(Object.entries(repoMonthlyCommitPairs.commitPairs)).pipe((0, rxjs_1.mergeMap)(([yearMonth, commitPair]) => {
         console.log(`Starting diff for ${yearMonth}-${repoPath}`);
         const diffObs = commitPair ?
+            // the first commit is the most recent one
             (0, cloc_diff_functions_1.runClocDiff)(commitPair[0].sha, commitPair[1].sha, languages, repoPath) :
             (0, rxjs_1.of)((0, cloc_diff_model_1.noDiffsClocDiffStats)(languages));
         return diffObs.pipe((0, rxjs_1.map)(clocDiff => {

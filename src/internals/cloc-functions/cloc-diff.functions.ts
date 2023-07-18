@@ -67,6 +67,6 @@ export function buildClocDiffAllCommand(
     // const clocDiffAllCommand = `cloc --diff --json --timeout=${CONFIG.CLOC_TIMEOUT}`
     const languagesString = languages.join(',')
     const languageFilter = languages.length > 0 ? `--include-lang=${languagesString}` : ''
-    const commitsFilter = `${mostRecentCommit}  ${leastRecentCommit}`
+    const commitsFilter = `${leastRecentCommit} ${mostRecentCommit}`
     return `${cdCommand} && ${clocDiffAllCommand} ${languageFilter} ${commitsFilter}`
 }

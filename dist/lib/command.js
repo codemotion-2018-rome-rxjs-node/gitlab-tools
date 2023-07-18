@@ -2,11 +2,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const launch_merge_request_analysis_1 = require("../core/analyze-merge-requests/launch-merge-request-analysis");
-const launch_count_repos_commits_1 = require("../core/count-repos-commits/launch-count-repos-commits");
+const launch_count_repos_commits_1 = require("../core/read-repos-commits/launch-count-repos-commits");
 const launch_clone_group_projects_1 = require("../core/clone-group-repos/launch-clone-group-projects");
 const launch_cloc_repos_1 = require("../core/cloc-repos/launch-cloc-repos");
 const launch_cloc_diff_repos_1 = require("../core/cloc-diff-repos/launch-cloc-diff-repos");
-const launch_read_group_projects_1 = require("../core/read-group-repos/launch-read-group-projects");
+const launch_read_group_projects_1 = require("../core/read-group-projects/launch-read-group-projects");
 const command = process.argv[2];
 switch (command) {
     case 'analyze-merge-requests':
@@ -20,6 +20,7 @@ switch (command) {
         break;
     case 'read-repos-commits':
         (0, launch_count_repos_commits_1.launchReadReposCommits)();
+        break;
     case 'cloc-repos':
         (0, launch_cloc_repos_1.launchClocRepos)();
         break;

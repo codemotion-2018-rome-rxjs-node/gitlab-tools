@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 import { launchMergeRequestAnalysis } from '../core/analyze-merge-requests/launch-merge-request-analysis';
-import { launchReadReposCommits } from '../core/count-repos-commits/launch-count-repos-commits';
+import { launchReadReposCommits } from '../core/read-repos-commits/launch-count-repos-commits';
 import { launchCloneGroupProjects } from '../core/clone-group-repos/launch-clone-group-projects';
 import { launchClocRepos } from '../core/cloc-repos/launch-cloc-repos';
 import { launchClocDiffRepos } from '../core/cloc-diff-repos/launch-cloc-diff-repos';
-import { launchReadGroupProjects } from '../core/read-group-repos/launch-read-group-projects';
+import { launchReadGroupProjects } from '../core/read-group-projects/launch-read-group-projects';
 
 const command = process.argv[2];
 
@@ -21,6 +21,7 @@ switch (command) {
         break;
     case 'read-repos-commits':
         launchReadReposCommits();
+        break;
     case 'cloc-repos':
         launchClocRepos();
         break;

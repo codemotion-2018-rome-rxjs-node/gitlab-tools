@@ -12,6 +12,19 @@ or via npx
 
 ` npx @enrico.piccinin/gitlab-tools analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
+# Read Gitlab Group Projects
+
+It is possible to read the all the projects in a Gitlab group with the command:
+
+`node ./dist/lib/command.js read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+
+or via npx
+
+` npx @enrico.piccinin/gitlab-tools read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+
+After reading the commits, the following files are created:
+- <group-name>-projects.csv
+
 # Clone Gitlab Projects
 
 It is possible to clone all the projects contained in a Gitlab group with the command

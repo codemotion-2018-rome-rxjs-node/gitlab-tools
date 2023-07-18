@@ -8,6 +8,15 @@ export type ProjectCompact = {
   ssh_url_to_repo?: string;
   http_url_to_repo?: string;
   web_url?: string;
+  created_at: string;
+  forked_from_project?: {
+    id: string,
+    description: string,
+    name: string,
+    name_with_namespace: string,
+    path: string,
+    path_with_namespace: string,
+  }
   otherProjectsFoundWithSearchForName?: { nameInSearch: string, namesFound: string[] };
 }
 

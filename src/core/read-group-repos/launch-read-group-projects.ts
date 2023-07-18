@@ -1,19 +1,19 @@
 import { Command } from "commander";
-import { cloneGroupProjects } from "./internals/clone-group-projects";
+import { readGroupProjects } from "./internals/read-group-projects";
 
-export function launchCloneGroupProjects() {
-    console.log('====>>>> Launching Clone of Group Projects')
+export function launchReadGroupProjects() {
+    console.log('====>>>> Launching Read Group Projects')
 
     const { gitLabUrl, token, groupId, outdir } = readParams();
 
-    cloneGroupProjects(gitLabUrl, token, groupId, outdir).subscribe()
+    readGroupProjects(gitLabUrl, token, groupId, outdir).subscribe()
 }
 
 function readParams() {
     const program = new Command();
 
     program
-        .description('A command to clone all the projects of a gitlab group')
+        .description('A command to read all the projects of a gitlab group')
         .requiredOption(
             '--gitLabUrl <string>',
             `gitlab server (e.g. gitlab.example.com)`,
@@ -24,7 +24,7 @@ function readParams() {
         )
         .requiredOption(
             '--groupId <string>',
-            `id of the group to clone (e.g. 1234)`,
+            `id of the group to read (e.g. 1234)`,
         )
         .option(
             '--outdir <string>',

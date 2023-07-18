@@ -1,6 +1,8 @@
 import axios from "axios"
-import { from, map } from "rxjs"
+import { concatMap, from, map, mergeMap, tap } from "rxjs"
 import { GroupCompact } from "./group.model"
+import { CONFIG } from "../config"
+import { readProject } from "./project.functions"
 
 export function readGroup(gitLabUrl: string, token: string, groupId: string) {
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}`
@@ -38,6 +40,13 @@ export function fetchAllGroupProjects(gitLabUrl: string, token: string, groupId:
         map(resp => {
             const projects = includeArchived ? resp.data : resp.data.filter((project: any) => !project.archived)
             return projects
-        })
+        }),
+        tap(projects => {
+            console.log(`====>>>> number of projects read`, projects.length)
+        }),
+        concatMap(projects => projects),
+        mergeMap((project: any) => {
+            return readProject(gitLabUrl, token, project.id)
+        }, CONFIG.CONCURRENCY),
     )
 }

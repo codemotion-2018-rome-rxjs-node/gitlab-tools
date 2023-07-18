@@ -7,12 +7,12 @@ import { ClocDiffStats } from "./cloc-diff.model";
 // runClocDiff is a function that runs the cloc command to calculate the differences (restricted to the selected languages) between 
 // 2 commits of the same repo and returns the result in the form of a ClocDiffLanguageStats array
 export function runClocDiff(
-    leastRecentCommit: string,
     mostRecentCommit: string,
+    leastRecentCommit: string,
     languages: string[],
     folderPath = './'
 ) {
-    const cmd = buildClocDiffAllCommand(leastRecentCommit, mostRecentCommit, languages, folderPath);
+    const cmd = buildClocDiffAllCommand(mostRecentCommit, leastRecentCommit, languages, folderPath);
     // #todo - check if we need to specify { encoding: 'utf-8' } as an argument
     return executeCommandObs(
         'run cloc --git-diff-all', cmd
@@ -57,8 +57,8 @@ export function runClocDiff(
 }
 
 export function buildClocDiffAllCommand(
-    leastRecentCommit: string,
     mostRecentCommit: string,
+    leastRecentCommit: string,
     languages: string[],
     folderPath = './'
 ) {
@@ -67,6 +67,6 @@ export function buildClocDiffAllCommand(
     // const clocDiffAllCommand = `cloc --diff --json --timeout=${CONFIG.CLOC_TIMEOUT}`
     const languagesString = languages.join(',')
     const languageFilter = languages.length > 0 ? `--include-lang=${languagesString}` : ''
-    const commitsFilter = `${leastRecentCommit}  ${mostRecentCommit}`
+    const commitsFilter = `${mostRecentCommit}  ${leastRecentCommit}`
     return `${cdCommand} && ${clocDiffAllCommand} ${languageFilter} ${commitsFilter}`
 }

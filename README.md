@@ -10,20 +10,21 @@ It is possible to analyze the merge requests of a gitlab group with the command
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+` npx "@enrico.piccinin/gitlab-tools" analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 # Read Gitlab Group Projects
 
-It is possible to read the all the projects in a Gitlab group with the command:
+It is possible to read the all the projects in a Gitlab group with the command and create list of such projects:
 
 `node ./dist/lib/command.js read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+` npx "@enrico.piccinin/gitlab-tools" read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 After reading the commits, the following files are created:
-- <group-name>-projects.csv
+
+-   <group-name>-projects.csv
 
 # Clone Gitlab Projects
 
@@ -33,11 +34,11 @@ It is possible to clone all the projects contained in a Gitlab group with the co
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+` npx "@enrico.piccinin/gitlab-tools" clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 # Read Commits from Repos
 
-It is possible to read the commit records of all repos contained in a folder (maybe after having cloned them with the `clone-group-projects` command).
+It is possible to read the commit records of all repos contained in a folder (after having cloned them, for instance with the `clone-group-projects` command).
 
 To read the commits run the command
 
@@ -45,16 +46,17 @@ To read the commits run the command
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools read-repos-commits --folderPath <path to folder> --outdir <outdir>`
+` npx "@enrico.piccinin/gitlab-tools" read-repos-commits --folderPath <path to folder> --outdir <outdir>`
 
 After reading the commits, the following files are created:
-- <folder-name>.json
-- <folder-name>-repos-commits-by-month.json
-- <folder-name>-repos-commits-by-month.csv
+
+-   <folder-name>.json
+-   <folder-name>-repos-commits-by-month.json
+-   <folder-name>-repos-commits-by-month.csv
 
 # Calculate cloc (number of lines of code)
 
-It is possible to calculate the lines of code of all files in all repos contained in a folder (maybe after having cloned them with the `clone-group-projects` command).
+It is possible to calculate the lines of code of all files in all repos contained in a folder (after having cloned them, e.g. with the `clone-group-projects` command).
 
 To calculate cloc run the command
 
@@ -62,11 +64,12 @@ To calculate cloc run the command
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools cloc-repos --folderPath <path to folder> --outdir <outdir>`
+` npx "@enrico.piccinin/gitlab-tools" cloc-repos --folderPath <path to folder> --outdir <outdir>`
 
 This command produces the following files:
-- <folder-name>-cloc.json
-- <folder-name>-cloc.csv
+
+-   <folder-name>-cloc.json
+-   <folder-name>-cloc.csv
 
 # Calculate the monthly diffences in the code base of repos
 
@@ -76,16 +79,18 @@ The repos considered are all the git repos contained in a folder.
 
 To calculate cloc diff run the command
 
-`node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...>`
+`node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...> --form fromDate --to toDate`
 
-`node ./dist/lib/command.js cloc-diff-repos --folderPath ./ --outdir ./out --languages "TypeScript" "Markdown"`
+`node ./dist/lib/command.js cloc-diff-repos --folderPath ./ --outdir ./out --languages "TypeScript" "Markdown" --from 2023-01-01`
 
 or via npx
 
-` npx @enrico.piccinin/gitlab-tools cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...>`
+` npx "@enrico.piccinin/gitlab-tools" cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...>`
 
 This command produces the following files:
-- <folder-name>-cloc-diff.json
+
+-   <folder-name>-cloc-diff.json
+-   <folder-name>-cloc-diff.csv
 
 ## MISCELLANEOUS
 

@@ -1,4 +1,4 @@
-import { first, from, map, mergeMap, toArray } from "rxjs";
+import { from, map, mergeMap, take, toArray } from "rxjs";
 
 import { reposInFolder } from "../repos-functions/repos-in-folder";
 import { runCloc } from "../cloc-functions/cloc.functions";
@@ -20,7 +20,7 @@ export function clocOnRepos(folderPath: string, concurrency = CONFIG.CONCURRENCY
     return from(reposInFolder(folderPath)).pipe(
         mergeMap(repoPath => {
             return fetchCommits(repoPath).pipe(
-                first(),
+                take(1),
                 map((commit) => ({ repoPath, sha: commit.sha }))
             )
         }),

@@ -23,6 +23,8 @@ export function runClocDiff(
             linesFromStdOutAndStdErr.forEach((line) => {
                 if (line.startsWith('from stderr: ')) {
                     console.error(`Error in runClocDiff for folder "${folderPath}"\nError: ${line}`)
+                    console.error(`Command erroring:`)
+                    console.error(`${cmd}`)
                 }
                 if (line.startsWith('from stdout: ')) {
                     output = line.substring('from stdout: '.length)

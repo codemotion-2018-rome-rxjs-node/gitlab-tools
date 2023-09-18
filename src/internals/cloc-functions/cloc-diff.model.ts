@@ -1,7 +1,8 @@
 import { ClocStats } from "./cloc.model";
 
-// RepoClocLanguageStats is a type that represents the statistics calculated by the "cloc" tool, with the diff option, on a repo
-export type RepoClocDiffStats = {
+// RepoMonthlyClocDiffStats is a type that represents the statistics calculated by the "cloc" tool, with the diff option, 
+// on a repo
+export type RepoMonthlyClocDiffStats = {
     repoPath: string;
     clocDiffStats: {
         [yearMonth: string]: ClocDiffStats;
@@ -15,12 +16,13 @@ type ClocDiffState = 'same' | 'modified' | 'added' | 'removed';
 export type ClocDiffStats = {
     mostRecentCommitSha?: string;
     leastRecentCommitSha?: string;
-    diffs: { [state in ClocDiffState]: ClocDiffLanguageStats; }
+    diffs: { [state in ClocDiffState]: ClocDiffLanguageStats; };
+    error?: any
 }
 
 // ClocDiffLanguageStats is an interface that represents the statistics about a language calculated
 // using the "cloc ClocDiffLanguageStats" tool
-interface ClocDiffLanguageStats {
+export interface ClocDiffLanguageStats {
     [language: string]: ClocStats;
 }
 

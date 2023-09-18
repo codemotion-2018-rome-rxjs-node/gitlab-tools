@@ -142,7 +142,7 @@ describe('flattenClocDiffStatsDict', () => {
         const numOfPossibleDiffTypes = 4; // added, removed, same, modified
         const numOfStatsPerDiffType = 4; // nFiles, blank, comment, code
         const expectedNumOfRecs = numOfYearMonths * numOfLanguages * numOfPossibleDiffTypes * numOfStatsPerDiffType;
-        const flattened = (0, cloc_diff_repos_1.flattenClocDiffStatsDict)(repoStats);
+        const flattened = (0, cloc_diff_repos_1.flattenMonthlyClocDiffStatsDict)(repoStats);
         (0, chai_1.expect)(flattened.length).equal(expectedNumOfRecs);
         numOfPythonFilesSameIn2021_01;
         const expectedNumOfPythonFilesSameIn2021_01 = (_a = flattened.find((rec) => {
@@ -158,7 +158,7 @@ describe('flattenClocDiffStatsDict', () => {
             clocDiffStats,
         };
         const expectedFlattened = [];
-        const flattened = (0, cloc_diff_repos_1.flattenClocDiffStatsDict)(repoStats);
+        const flattened = (0, cloc_diff_repos_1.flattenMonthlyClocDiffStatsDict)(repoStats);
         (0, chai_1.expect)(flattened).deep.equal(expectedFlattened);
     });
 });

@@ -24,6 +24,9 @@ switch (command) {
     case 'cloc-repos':
         (0, launch_cloc_repos_1.launchClocRepos)();
         break;
+    case 'cloc-monthly-diff-repos':
+        (0, launch_cloc_diff_repos_1.launchMonthlyClocDiffRepos)();
+        break;
     case 'cloc-diff-repos':
         (0, launch_cloc_diff_repos_1.launchClocDiffRepos)();
         break;

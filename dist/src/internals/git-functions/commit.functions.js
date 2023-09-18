@@ -1,34 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.newCommitsByMonth = exports.buildCommitPairArray = exports.newCommitCompact = exports.fetchCommits = void 0;
-const rxjs_1 = require("rxjs");
-const execute_command_1 = require("../execute-command/execute-command");
+var rxjs_1 = require("rxjs");
+var execute_command_1 = require("../execute-command/execute-command");
 // fetchCommit is a function that fetched all the commits from a git repo and returns the sha of each commit and its date
 // #copilot comment - the following comment has been added by copilot
 // It uses the git log command to fetch the commits
 // It returns an observable of an array of strings
 // Each string is a commit sha and date separated by a comma
 // The observable is an error if the command fails
-function fetchCommits(repoPath, fromDate = new Date(0), toDate = new Date(Date.now())) {
+function fetchCommits(repoPath, fromDate, toDate) {
+    if (fromDate === void 0) { fromDate = new Date(0); }
+    if (toDate === void 0) { toDate = new Date(Date.now()); }
     if (!repoPath)
-        throw new Error(`Path is mandatory`);
-    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
-    return (0, execute_command_1.executeCommandNewProcessToLinesObs)(`Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an'], { cwd: repoPath }).pipe((0, rxjs_1.map)((commits) => commits.split('\n')), (0, rxjs_1.concatMap)((commits) => {
+        throw new Error("Path is mandatory");
+    var command = "cd ".concat(repoPath, " && git log --pretty=format:\"%H,%ad,%an\"");
+    return (0, execute_command_1.executeCommandNewProcessToLinesObs)("Fetch commits", 'git', ['log', '--pretty=format:%H,%ad,%an'], { cwd: repoPath }).pipe((0, rxjs_1.map)(function (commits) { return commits.split('\n'); }), (0, rxjs_1.concatMap)(function (commits) {
         return (0, rxjs_1.from)(commits);
-    }), (0, rxjs_1.map)((commit) => {
+    }), (0, rxjs_1.map)(function (commit) {
         return newCommitCompact(commit);
-    }), (0, rxjs_1.filter)((commit) => {
+    }), (0, rxjs_1.filter)(function (commit) {
         return commit.date >= fromDate && commit.date <= toDate;
-    }), (0, rxjs_1.catchError)((err) => {
-        console.error(`Error: "fetchCommits" while executing command "${command}" - error ${err.stack}`);
+    }), (0, rxjs_1.catchError)(function (err) {
+        console.error("Error: \"fetchCommits\" while executing command \"".concat(command, "\" - error ").concat(err.stack));
         return rxjs_1.EMPTY;
     }));
 }
 exports.fetchCommits = fetchCommits;
 // newCommitCompact returns a new CommitCompact object with the given sha and date
 function newCommitCompact(data) {
-    const shaDateAuthor = data.split(',');
-    const commit = {
+    var shaDateAuthor = data.split(',');
+    var commit = {
         sha: shaDateAuthor[0],
         date: new Date(shaDateAuthor[1]),
         author: shaDateAuthor[2]
@@ -39,10 +41,10 @@ exports.newCommitCompact = newCommitCompact;
 // buildCommitPairArray is a function that receives an array of CommitCompact objects and returns an array of CommitPair objects
 // where each CommitPair object contains two CommitCompact objects and the yearMonth of the second commit
 function buildCommitPairArray(commits, repoPath) {
-    const commitPairs = [];
-    for (let i = 0; i < commits.length - 1; i++) {
-        const commitPair = {
-            repoPath,
+    var commitPairs = [];
+    for (var i = 0; i < commits.length - 1; i++) {
+        var commitPair = {
+            repoPath: repoPath,
             yearMonth: yearMonthFromDate(commits[i + 1].date),
             commitPair: [commits[i], commits[i + 1]]
         };
@@ -56,8 +58,8 @@ exports.buildCommitPairArray = buildCommitPairArray;
 // month first and year second, I changed it to year first and month second
 // I also changed the format of the month to be 2 digits
 function newCommitsByMonth(commits) {
-    const commitsByMonth = commits.reduce((acc, commit) => {
-        const key = yearMonthFromDate(commit.date);
+    var commitsByMonth = commits.reduce(function (acc, commit) {
+        var key = yearMonthFromDate(commit.date);
         if (!acc[key]) {
             acc[key] = {
                 commits: [],
@@ -72,8 +74,7 @@ function newCommitsByMonth(commits) {
 }
 exports.newCommitsByMonth = newCommitsByMonth;
 function yearMonthFromDate(date) {
-    const month = ("0" + (date.getMonth() + 1)).slice(-2);
-    const year = date.getFullYear();
-    return `${year}-${month}`;
+    var month = ("0" + (date.getMonth() + 1)).slice(-2);
+    var year = date.getFullYear();
+    return "".concat(year, "-").concat(month);
 }
-//# sourceMappingURL=commit.functions.js.map

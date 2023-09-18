@@ -36,13 +36,13 @@ describe('commitsByMonth', () => {
             },
         };
         Object.entries(expected).forEach(([key, value]) => {
-            (0, chai_1.expect)((0, commit_functions_1.commitsByMonth)(commits)[key]).deep.equal(value);
+            (0, chai_1.expect)((0, commit_functions_1.newCommitsByMonth)(commits)[key]).deep.equal(value);
         });
     });
     it('should return an empty object for an empty array', () => {
         const commits = [];
         const expected = {};
-        (0, chai_1.expect)((0, commit_functions_1.commitsByMonth)(commits)).deep.equal(expected);
+        (0, chai_1.expect)((0, commit_functions_1.newCommitsByMonth)(commits)).deep.equal(expected);
     });
 });
 describe('fetchCommits', () => {

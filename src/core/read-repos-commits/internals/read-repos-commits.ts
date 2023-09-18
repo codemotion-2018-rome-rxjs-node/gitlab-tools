@@ -1,26 +1,27 @@
 import path from "path";
-import { concatMap, map, tap } from "rxjs";
+import { concatMap, map, tap, toArray } from "rxjs";
 
 import { writeFileObs } from "observable-fs";
 import { toCsv } from "@enrico.piccinin/csv-tools";
 
-import { reposInFolderObs } from "../../../internals/git-functions/repo.functions";
-import { groupRepoCommitsByMonth, repoCommitsByMonthRecords } from "../../../internals/git-functions/repo.functions";
+import { reposCompactWithCommitsByMonthsInFolderObs } from "../../../internals/git-functions/repo.functions";
+import { newReposWithCommitsByMonth, repoCommitsByMonthRecords } from "../../../internals/git-functions/repo.functions";
 
-import { RepoCompact, ReposWithCommitsByMonths } from "../../../internals/git-functions/repo.model";
+import { RepoCompactWithCommitsByMonths, ReposWithCommitsByMonths } from "../../../internals/git-functions/repo.model";
 
 // readReposCommits reeads all the repos contained in a directory and returns an observable of an array of RepoCompact
 export function readReposCommits(folderPath: string, outdir: string, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = 1) {
     const folderName = path.basename(folderPath);
 
-    return reposInFolderObs(folderPath, fromDate, toDate, concurrency).pipe(
+    return reposCompactWithCommitsByMonthsInFolderObs(folderPath, fromDate, toDate, concurrency).pipe(
+        toArray(),
         concatMap((repos) => {
             const outFile = path.join(outdir, `${folderName}.json`);
             return writeReposJson(repos, outFile)
         }),
         concatMap((repos) => {
             const outFile = path.join(outdir, `${folderName}-repos-commits-by-month.json`);
-            const repoCommitsByMonth = groupRepoCommitsByMonth(repos)
+            const repoCommitsByMonth = newReposWithCommitsByMonth(repos)
             return writeReposCommitsByMonthJson(repoCommitsByMonth, outFile);
         }),
         concatMap((repoCommitsByMonth) => {
@@ -30,7 +31,7 @@ export function readReposCommits(folderPath: string, outdir: string, fromDate = 
     )
 }
 
-const writeReposJson = (repos: RepoCompact[], outFile: string) => {
+const writeReposJson = (repos: RepoCompactWithCommitsByMonths[], outFile: string) => {
     return writeFileObs(outFile, [
         // add a replacer function since JSON.stringify does not support Set
         // https://stackoverflow.com/a/46491780/5699993

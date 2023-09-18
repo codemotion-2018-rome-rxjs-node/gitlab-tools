@@ -1,8 +1,8 @@
-import { EMPTY, catchError, from, map, mergeMap, tap, toArray } from 'rxjs';
+import { EMPTY, catchError, concatMap, filter, from, map, mergeMap, tap, toArray } from 'rxjs';
 
 import { executeCommandObs } from '../execute-command/execute-command';
-import { commitsByMonth, fetchCommits } from './commit.functions';
-import { RepoCompact, ReposWithCommitsByMonths } from './repo.model';
+import { newCommitsByMonth, fetchCommits, buildCommitPairArray } from './commit.functions';
+import { RepoCompact, RepoCompactWithCommitPairs, RepoCompactWithCommitsByMonths, ReposWithCommitsByMonths } from './repo.model';
 import { CommitCompact } from './commit.model';
 import { reposInFolder } from '../repos-functions/repos-in-folder';
 
@@ -24,26 +24,71 @@ export function cloneRepo(url: string, repoPath: string, repoName: string) {
     );
 }
 
-// reposInFolderObs returns an Observable that notifies the list of RepoCompact objects representing
-// all the repos in a given folder
-export function reposInFolderObs(folderPath: string, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = 1) {
+// reposCompactInFolderObs returns an Observable that notifies the list of 
+// RepoCompact objects representing all the repos in a given folder
+// repos whose name is in the excludeRepoPaths array are excluded, in the excludeRepoPaths array
+// wildcards can be used, e.g. ['repo1', 'repo2', 'repo3*'] will exclude repo1, repo2 and all the repos that start with repo3
+export function reposCompactInFolderObs(
+    folderPath: string,
+    fromDate = new Date(0),
+    toDate = new Date(Date.now()),
+    concurrency = 1,
+    excludeRepoPaths: string[] = []
+) {
     const repoPaths = reposInFolder(folderPath);
     return from(repoPaths).pipe(
+        filter((repoPath) => {
+            return !isToBeExcluded(repoPath, excludeRepoPaths)
+        }),
+        toArray(),
+        tap((repoPaths) => {
+            console.log(`Repos to be analyzed: ${repoPaths.length}`)
+            repoPaths.forEach((repoPath) => {
+                console.log(`Repo to be analyzed: ${repoPath}`)
+            })
+        }),
+        concatMap((repoPaths) => {
+            return from(repoPaths)
+        }),
         mergeMap((repoPath) => {
             return newRepoCompact(repoPath, fromDate, toDate)
         }, concurrency),
-        toArray(),
     )
 }
 
-// newRepoCompact returns an Observable that notifies a new RepoCompact filled with its commits sorted by date ascending
+// isToBeExcluded returns true if the name of the repo is in the excludeRepoPaths array
+export function isToBeExcluded(repoPath: string, excludeRepoPaths: string[]) {
+    const excludeRepoPathsLowerCase = excludeRepoPaths.map((excludeRepo) => excludeRepo.toLowerCase())
+    const repoPathLowerCase = repoPath.toLowerCase()
+    return excludeRepoPathsLowerCase.some((excludeRepo) => {
+        if (excludeRepo.includes('*')) {
+            const excludeRepoRegex = new RegExp(excludeRepo.replace('*', '.*'))
+            return excludeRepoRegex.test(repoPathLowerCase)
+        } else {
+            return repoPathLowerCase === excludeRepo
+        }
+    })
+}
+
+// reposCompactWithCommitsByMonthsInFolderObs returns an Observable that notifies the list of 
+// RepoCompactWithCommitsByMonths objects representing all the repos in a given folder
+export function reposCompactWithCommitsByMonthsInFolderObs(folderPath: string, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = 1) {
+    const repoPaths = reposInFolder(folderPath);
+    return from(repoPaths).pipe(
+        mergeMap((repoPath) => {
+            return newRepoCompactWithCommitsByMonths(repoPath, fromDate, toDate)
+        }, concurrency),
+    )
+}
+
+// newRepoCompact returns an Observable that notifies a new RepoCompact
+// filled with its commits sorted by date ascending
 export function newRepoCompact(repoPath: string, fromDate = new Date(0), toDate = new Date(Date.now())) {
     return fetchCommits(repoPath, fromDate, toDate).pipe(
         toArray(),
         map((commits) => {
             const commitsSorted = commits.sort((a, b) => a.date.getTime() - b.date.getTime());
-            const _commitsByMonth = commitsByMonth(commitsSorted)
-            const repo: RepoCompact = { path: repoPath, commits: commitsSorted, commitsByMonth: _commitsByMonth }
+            const repo: RepoCompact = { path: repoPath, commits: commitsSorted }
             return repo
         }),
         catchError((err) => {
@@ -53,9 +98,34 @@ export function newRepoCompact(repoPath: string, fromDate = new Date(0), toDate 
     );
 }
 
-// groupRepoCommitsByMonth retuns all the repos that have commits in a given month grouped by month
+// newRepoCompactWithCommitPairs is a function that receives a RepoCompact and returns a RepoCompactWithCommitPairs
+// with the commitPairs filled
+export function newRepoCompactWithCommitPairs(repoCompact: RepoCompact) {
+    const commits = repoCompact.commits
+    const commitPairs = buildCommitPairArray(commits, repoCompact.path)
+    const repoCompactWithCommitPairs: RepoCompactWithCommitPairs = { ...repoCompact, commitPairs }
+    return repoCompactWithCommitPairs
+}
+
+// newRepoCompactWithCommitsByMonths returns an Observable that notifies a new RepoCompactWithCommitsByMonths
+// filled with its commits sorted by date ascending
+export function newRepoCompactWithCommitsByMonths(repoPath: string, fromDate = new Date(0), toDate = new Date(Date.now())) {
+    return newRepoCompact(repoPath, fromDate, toDate).pipe(
+        map((repoCompact) => {
+            const _commitsByMonth = newCommitsByMonth(repoCompact.commits)
+            const repo: RepoCompactWithCommitsByMonths = { ...repoCompact, commitsByMonth: _commitsByMonth }
+            return repo
+        }),
+        catchError((err) => {
+            console.error(`Error: while reading the commits of repo "${repoPath}" - error:\n ${JSON.stringify(err, null, 2)}`)
+            return EMPTY
+        })
+    );
+}
+
+// newReposWithCommitsByMonth retuns all the repos that have commits in a given month grouped by month
 // #copilot - the entire method has been generated by copilot once I have specified the return type
-export function groupRepoCommitsByMonth(repos: RepoCompact[]): ReposWithCommitsByMonths {
+export function newReposWithCommitsByMonth(repos: RepoCompactWithCommitsByMonths[]): ReposWithCommitsByMonths {
     const reposByMonthUnordered = repos.reduce((acc, repo) => {
         Object.keys(repo.commitsByMonth).forEach((yearMonth) => {
             if (!acc[yearMonth]) {

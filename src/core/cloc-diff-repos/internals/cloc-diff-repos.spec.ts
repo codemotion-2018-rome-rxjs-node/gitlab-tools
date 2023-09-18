@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ClocDiffStats } from '../../../internals/cloc-functions/cloc-diff.model';
-import { flattenClocDiffStatsDict } from './cloc-diff-repos';
+import { flattenMonthlyClocDiffStatsDict } from './cloc-diff-repos';
 
 describe('flattenClocDiffStatsDict', () => {
     it('should flatten a dictionary of ClocDiffStats objects into a list of flattened objects', () => {
@@ -147,7 +147,7 @@ describe('flattenClocDiffStatsDict', () => {
         const numOfStatsPerDiffType = 4; // nFiles, blank, comment, code
         const expectedNumOfRecs = numOfYearMonths * numOfLanguages * numOfPossibleDiffTypes * numOfStatsPerDiffType;
 
-        const flattened = flattenClocDiffStatsDict(repoStats);
+        const flattened = flattenMonthlyClocDiffStatsDict(repoStats);
         expect(flattened.length).equal(expectedNumOfRecs);
         numOfPythonFilesSameIn2021_01
         const expectedNumOfPythonFilesSameIn2021_01 = flattened.find((rec) => {
@@ -164,7 +164,7 @@ describe('flattenClocDiffStatsDict', () => {
             clocDiffStats,
         };
         const expectedFlattened: any[] = [];
-        const flattened = flattenClocDiffStatsDict(repoStats);
+        const flattened = flattenMonthlyClocDiffStatsDict(repoStats);
         expect(flattened).deep.equal(expectedFlattened);
     });
 });

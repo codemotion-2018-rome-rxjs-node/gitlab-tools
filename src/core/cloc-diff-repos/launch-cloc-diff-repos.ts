@@ -1,9 +1,18 @@
 import { Command } from "commander";
-import { calculateMonthlyClocDiffsOnRepos } from "./internals/cloc-diff-repos";
-
+import { calculateClocDiffsOnRepos, calculateMonthlyClocDiffsOnRepos } from "./internals/cloc-diff-repos";
+import { CONFIG } from "../../internals/config";
 
 export function launchClocDiffRepos() {
     console.log('====>>>> Launching Cloc diff on Repos')
+
+    const { folderPath, outdir, languages, from, to, concurrency, excludeRepoPaths } = readParams();
+
+    calculateClocDiffsOnRepos(folderPath, outdir, languages, from, to, concurrency, excludeRepoPaths).subscribe()
+}
+
+
+export function launchMonthlyClocDiffRepos() {
+    console.log('====>>>> Launching Monthly Cloc diff on Repos')
 
     const { folderPath, outdir, languages, from, to } = readParams();
 
@@ -35,6 +44,16 @@ function readParams() {
         .option(
             '--to <string>',
             `the date until which we run the analysis - default is the current date`,
+        )
+        .option(
+            '--concurrency <number>',
+            `concurrency level - default is ${CONFIG.CONCURRENCY}`
+        )
+        .option(
+            '--excludeRepoPaths <string...>',
+            `a space separated list of folder names to be excluded from the analysis (e.g. --excludeRepoPaths "dbm" "dbobjects") -
+             default is the empty list which means no repos are excluded
+             wildcard * can be used to exclude all repos that contain a certain string (e.g. --excludeRepoPaths "*dbm" will exclude all repos that contain the string "dbm")`,
         );
 
     const _options = program.parse(process.argv).opts();
@@ -42,6 +61,8 @@ function readParams() {
     const languages = _options.languages || [];
     const from = _options.from ? new Date(_options.from) : new Date(0);
     const to = _options.to ? new Date(_options.to) : new Date(Date.now());
+    const concurrency = _options.concurrency ? parseInt(_options.concurrency) : CONFIG.CONCURRENCY;
+    const excludeRepoPaths = _options.excludeRepoPaths || [];
 
-    return { folderPath: _options.folderPath, outdir, languages, from, to };
+    return { folderPath: _options.folderPath, outdir, languages, from, to, concurrency, excludeRepoPaths };
 }

@@ -17,7 +17,7 @@ function clocOnRepos(folderPath, concurrency = config_1.CONFIG.CONCURRENCY) {
         code: 0,
     };
     return (0, rxjs_1.from)((0, repos_in_folder_1.reposInFolder)(folderPath)).pipe((0, rxjs_1.mergeMap)(repoPath => {
-        return (0, commit_functions_1.fetchCommits)(repoPath).pipe((0, rxjs_1.first)(), (0, rxjs_1.map)((commit) => ({ repoPath, sha: commit.sha })));
+        return (0, commit_functions_1.fetchCommits)(repoPath).pipe((0, rxjs_1.take)(1), (0, rxjs_1.map)((commit) => ({ repoPath, sha: commit.sha })));
     }), (0, rxjs_1.mergeMap)(({ repoPath, sha }) => {
         return (0, cloc_functions_1.runCloc)(sha, repoPath).pipe((0, rxjs_1.map)((clocStats) => {
             const sumStats = clocStats.find((clocStat) => clocStat.language === 'SUM');

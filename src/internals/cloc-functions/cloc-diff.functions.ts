@@ -38,9 +38,17 @@ export function runClocDiff(
             try {
                 diffs = JSON.parse(output);
             } catch (error) {
-                console.error(`Error in runClocDiff for folder "${folderPath}"\nError: ${error}`)
-                console.error(`Output: ${output}`)
-                console.error(`Command: ${cmd}`)
+                const err = `Error in runClocDiff for folder "${folderPath}"\nError: ${error}
+                Output: ${output}
+                Command: ${cmd}`
+                console.error(err)
+                const clocOutputJson: ClocDiffStats = {
+                    mostRecentCommitSha: mostRecentCommit,
+                    leastRecentCommitSha: leastRecentCommit,
+                    diffs,
+                    error: err
+                }
+                return clocOutputJson
             }
             const clocOutputJson: ClocDiffStats = {
                 mostRecentCommitSha: mostRecentCommit,

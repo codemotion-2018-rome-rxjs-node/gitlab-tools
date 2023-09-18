@@ -13,12 +13,12 @@ const repo_functions_2 = require("../../../internals/git-functions/repo.function
 // readReposCommits reeads all the repos contained in a directory and returns an observable of an array of RepoCompact
 function readReposCommits(folderPath, outdir, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = 1) {
     const folderName = path_1.default.basename(folderPath);
-    return (0, repo_functions_1.reposInFolderObs)(folderPath, fromDate, toDate, concurrency).pipe((0, rxjs_1.concatMap)((repos) => {
+    return (0, repo_functions_1.reposCompactWithCommitsByMonthsInFolderObs)(folderPath, fromDate, toDate, concurrency).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.concatMap)((repos) => {
         const outFile = path_1.default.join(outdir, `${folderName}.json`);
         return writeReposJson(repos, outFile);
     }), (0, rxjs_1.concatMap)((repos) => {
         const outFile = path_1.default.join(outdir, `${folderName}-repos-commits-by-month.json`);
-        const repoCommitsByMonth = (0, repo_functions_2.groupRepoCommitsByMonth)(repos);
+        const repoCommitsByMonth = (0, repo_functions_2.newReposWithCommitsByMonth)(repos);
         return writeReposCommitsByMonthJson(repoCommitsByMonth, outFile);
     }), (0, rxjs_1.concatMap)((repoCommitsByMonth) => {
         const outFile = path_1.default.join(outdir, `${folderName}-repos-commits-by-month.csv`);

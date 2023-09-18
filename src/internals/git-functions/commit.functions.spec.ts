@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { commitsByMonth, fetchCommits } from './commit.functions';
+import { newCommitsByMonth, fetchCommits } from './commit.functions';
 import { CommitCompact, CommitsByMonths } from './commit.model';
 import { toArray } from 'rxjs';
 
@@ -36,14 +36,14 @@ describe('commitsByMonth', () => {
             },
         }
         Object.entries(expected).forEach(([key, value]) => {
-            expect(commitsByMonth(commits)[key]).deep.equal(value)
+            expect(newCommitsByMonth(commits)[key]).deep.equal(value)
         })
     })
 
     it('should return an empty object for an empty array', () => {
         const commits: CommitCompact[] = []
         const expected = {}
-        expect(commitsByMonth(commits)).deep.equal(expected)
+        expect(newCommitsByMonth(commits)).deep.equal(expected)
     })
 })
 

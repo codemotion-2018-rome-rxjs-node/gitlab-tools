@@ -14,6 +14,8 @@ function runClocDiff(mostRecentCommit, leastRecentCommit, languages, folderPath 
         linesFromStdOutAndStdErr.forEach((line) => {
             if (line.startsWith('from stderr: ')) {
                 console.error(`Error in runClocDiff for folder "${folderPath}"\nError: ${line}`);
+                console.error(`Command erroring:`);
+                console.error(`${cmd}`);
             }
             if (line.startsWith('from stdout: ')) {
                 output = line.substring('from stdout: '.length);
@@ -27,9 +29,17 @@ function runClocDiff(mostRecentCommit, leastRecentCommit, languages, folderPath 
             diffs = JSON.parse(output);
         }
         catch (error) {
-            console.error(`Error in runClocDiff for folder "${folderPath}"\nError: ${error}`);
-            console.error(`Output: ${output}`);
-            console.error(`Command: ${cmd}`);
+            const err = `Error in runClocDiff for folder "${folderPath}"\nError: ${error}
+                Output: ${output}
+                Command: ${cmd}`;
+            console.error(err);
+            const clocOutputJson = {
+                mostRecentCommitSha: mostRecentCommit,
+                leastRecentCommitSha: leastRecentCommit,
+                diffs,
+                error: err
+            };
+            return clocOutputJson;
         }
         const clocOutputJson = {
             mostRecentCommitSha: mostRecentCommit,

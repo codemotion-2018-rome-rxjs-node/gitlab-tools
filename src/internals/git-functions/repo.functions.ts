@@ -87,8 +87,7 @@ export function newRepoCompact(repoPath: string, fromDate = new Date(0), toDate 
     return fetchCommits(repoPath, fromDate, toDate).pipe(
         toArray(),
         map((commits) => {
-            const commitsSorted = commits.sort((a, b) => a.date.getTime() - b.date.getTime());
-            const repo: RepoCompact = { path: repoPath, commits: commitsSorted }
+            const repo: RepoCompact = { path: repoPath, commits }
             return repo
         }),
         catchError((err) => {

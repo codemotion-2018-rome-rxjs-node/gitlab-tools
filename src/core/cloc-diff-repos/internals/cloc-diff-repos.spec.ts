@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { ClocDiffStats } from '../../../internals/cloc-functions/cloc-diff.model';
 import { flattenMonthlyClocDiffStatsDict } from './cloc-diff-repos';
+import { reposCompactInFolderObs } from '../../../internals/git-functions/repo.functions';
 
 describe('flattenClocDiffStatsDict', () => {
     it('should flatten a dictionary of ClocDiffStats objects into a list of flattened objects', () => {
@@ -166,5 +167,22 @@ describe('flattenClocDiffStatsDict', () => {
         const expectedFlattened: any[] = [];
         const flattened = flattenMonthlyClocDiffStatsDict(repoStats);
         expect(flattened).deep.equal(expectedFlattened);
+    });
+});
+
+describe('reposCompactInFolderObs', () => {
+    it('should return notify a stream of values since the difference between the commits is performed on this repo', (done) => {
+        const repoPath = './';
+
+        reposCompactInFolderObs(repoPath, new Date(0), new Date(Date.now())).subscribe({
+            next: (repoCompact) => {
+                expect(repoCompact.path).equal(repoPath);
+                expect(repoCompact.commits.length).gt(0);
+                done();
+            },
+            error: (err) => {
+                done(err);
+            },
+        })
     });
 });

@@ -1,6 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.noDiffsClocDiffStats = void 0;
+exports.noDiffsClocDiffStats = exports.newClocDiffStatsWithError = exports.newClocDiffStatsZeroed = void 0;
+function newClocDiffStatsZeroed(mostRecentCommitSha, leastRecentCommitSha, error) {
+    return {
+        mostRecentCommitSha,
+        leastRecentCommitSha,
+        diffs: {
+            same: {},
+            modified: {},
+            added: {},
+            removed: {},
+        },
+        error
+    };
+}
+exports.newClocDiffStatsZeroed = newClocDiffStatsZeroed;
+function newClocDiffStatsWithError(mostRecentCommitSha, leastRecentCommitSha, error) {
+    return newClocDiffStatsZeroed(mostRecentCommitSha, leastRecentCommitSha, error);
+}
+exports.newClocDiffStatsWithError = newClocDiffStatsWithError;
 function noDiffsClocDiffStats(languages) {
     return languages.reduce((acc, lang) => {
         const clocDiffLanguageStats = {};

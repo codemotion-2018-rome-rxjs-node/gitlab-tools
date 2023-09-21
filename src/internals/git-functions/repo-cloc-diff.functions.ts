@@ -1,9 +1,10 @@
-import { from, map, mergeMap, of, reduce } from "rxjs"
+import { catchError, concatMap, from, map, mergeMap, of, reduce, toArray } from "rxjs"
 import { runClocDiff } from "../cloc-functions/cloc-diff.functions"
-import { ClocDiffStats, RepoMonthlyClocDiffStats, noDiffsClocDiffStats } from "../cloc-functions/cloc-diff.model"
-import { CommitCompact, CommitPair } from "./commit.model"
+import { ClocDiffStats, RepoMonthlyClocDiffStats, newClocDiffStatsWithError, noDiffsClocDiffStats } from "../cloc-functions/cloc-diff.model"
+import { CommitCompact, CommitPair, yearMonthFromDate } from "./commit.model"
 import { CommitTuple } from "./repo-cloc-diff.model"
 import { CONFIG } from "../config"
+import { executeCommandObs, getCommandOutput } from "../execute-command/execute-command"
 
 // commitDiffPairs is a function that take a dictionary where the keys are yearMonth and the values are the array of commits
 // belonging to that yearMonth and returns a dictionary whose keys are the tearMonth
@@ -125,6 +126,50 @@ export function calculateClocGitDiffs(commitPair: CommitPair, languages: string[
                 repoPath: commitPair.repoPath,
                 yearMonth: commitPair.yearMonth,
                 leastRecentCommitDate: secondCommit.date.toLocaleDateString(),
+                clocDiff
+            }
+        })
+    )
+}
+
+// calculateClocGitDiffsChildParent is a function that receives a CommitCompact object and calculates the cloc diff 
+// between this commit and its parent
+// and returns an object with the yearMonth, the commit date and the cloc diff
+export function calculateClocGitDiffsChildParent(commit: CommitCompact, repoPath: string, languages: string[]) {
+    const childCommitSha = commit.sha
+    const parentCommitSha = `${childCommitSha}^1`
+    console.log(`Starting diff for ${repoPath} -- Date: ${commit.date.toLocaleDateString()}`)
+    return runClocDiff(childCommitSha, parentCommitSha, languages, repoPath).pipe(
+        concatMap(clocDiff => {
+            // we are reading the parent of the child commit
+            const cmd = `cd ${repoPath} && git log --pretty=%H,%ad,%an ${parentCommitSha} -n 1`
+            return executeCommandObs(
+                'run git-log to find parent', cmd
+            ).pipe(
+                toArray(),
+                map((linesFromStdOutAndStdErr) => {
+                    const output = getCommandOutput(linesFromStdOutAndStdErr, repoPath, cmd)
+                    const [_sha, date, _author] = output.split(',')
+                    const parentCommitDate = new Date(date).toLocaleDateString()
+                    return { clocDiff, parentCommitDate }
+                }),
+                catchError((error) => {
+                    const err = `Error in runClocDiff for folder "${repoPath}"\nError: ${error}
+Command: ${cmd}`
+                    console.error(err)
+                    // in case of error the parentCommitDate is the first date in the Unix epoch
+                    const parentCommitDate = new Date(0).toLocaleDateString()
+                    const clocOutputWithError = newClocDiffStatsWithError(childCommitSha, parentCommitSha, err)
+                    return of({ clocDiff: clocOutputWithError, parentCommitDate })
+                })
+            )
+        }),
+        map(({ clocDiff, parentCommitDate }) => {
+            return {
+                repoPath,
+                yearMonth: yearMonthFromDate(commit.date),
+                mostRecentCommitDate: commit.date.toLocaleDateString(),
+                leastRecentCommitDate: parentCommitDate,
                 clocDiff
             }
         })

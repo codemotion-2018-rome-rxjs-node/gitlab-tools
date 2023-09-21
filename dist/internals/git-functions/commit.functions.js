@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.newCommitsByMonth = exports.buildCommitPairArray = exports.newCommitCompact = exports.fetchCommits = void 0;
 const rxjs_1 = require("rxjs");
 const execute_command_1 = require("../execute-command/execute-command");
+const commit_model_1 = require("./commit.model");
 // fetchCommit is a function that fetched all the commits from a git repo and returns the sha of each commit and its date
 // #copilot comment - the following comment has been added by copilot
 // It uses the git log command to fetch the commits
@@ -12,8 +13,8 @@ const execute_command_1 = require("../execute-command/execute-command");
 function fetchCommits(repoPath, fromDate = new Date(0), toDate = new Date(Date.now())) {
     if (!repoPath)
         throw new Error(`Path is mandatory`);
-    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
-    return (0, execute_command_1.executeCommandNewProcessToLinesObs)(`Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an'], { cwd: repoPath }).pipe((0, rxjs_1.map)((commits) => commits.split('\n')), (0, rxjs_1.concatMap)((commits) => {
+    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an" --no-merges`;
+    return (0, execute_command_1.executeCommandNewProcessToLinesObs)(`Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an', '--no-merges'], { cwd: repoPath }).pipe((0, rxjs_1.map)((commits) => commits.split('\n')), (0, rxjs_1.concatMap)((commits) => {
         return (0, rxjs_1.from)(commits);
     }), (0, rxjs_1.map)((commit) => {
         return newCommitCompact(commit);
@@ -41,11 +42,7 @@ exports.newCommitCompact = newCommitCompact;
 function buildCommitPairArray(commits, repoPath) {
     const commitPairs = [];
     for (let i = 0; i < commits.length - 1; i++) {
-        const commitPair = {
-            repoPath,
-            yearMonth: yearMonthFromDate(commits[i + 1].date),
-            commitPair: [commits[i], commits[i + 1]]
-        };
+        const commitPair = (0, commit_model_1.newCommitPair)(repoPath, commits[i], commits[i + 1]);
         commitPairs.push(commitPair);
     }
     return commitPairs;
@@ -57,7 +54,7 @@ exports.buildCommitPairArray = buildCommitPairArray;
 // I also changed the format of the month to be 2 digits
 function newCommitsByMonth(commits) {
     const commitsByMonth = commits.reduce((acc, commit) => {
-        const key = yearMonthFromDate(commit.date);
+        const key = (0, commit_model_1.yearMonthFromDate)(commit.date);
         if (!acc[key]) {
             acc[key] = {
                 commits: [],
@@ -71,9 +68,4 @@ function newCommitsByMonth(commits) {
     return commitsByMonth;
 }
 exports.newCommitsByMonth = newCommitsByMonth;
-function yearMonthFromDate(date) {
-    const month = ("0" + (date.getMonth() + 1)).slice(-2);
-    const year = date.getFullYear();
-    return `${year}-${month}`;
-}
 //# sourceMappingURL=commit.functions.js.map

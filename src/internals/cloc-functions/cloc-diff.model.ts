@@ -20,6 +20,24 @@ export type ClocDiffStats = {
     error?: any
 }
 
+export function newClocDiffStatsZeroed(mostRecentCommitSha: string, leastRecentCommitSha: string, error?: any): ClocDiffStats {
+    return {
+        mostRecentCommitSha,
+        leastRecentCommitSha,
+        diffs: {
+            same: {},
+            modified: {},
+            added: {},
+            removed: {},
+        },
+        error
+    }
+}
+
+export function newClocDiffStatsWithError(mostRecentCommitSha: string, leastRecentCommitSha: string, error: any): ClocDiffStats {
+    return newClocDiffStatsZeroed(mostRecentCommitSha, leastRecentCommitSha, error)
+}
+
 // ClocDiffLanguageStats is an interface that represents the statistics about a language calculated
 // using the "cloc ClocDiffLanguageStats" tool
 export interface ClocDiffLanguageStats {

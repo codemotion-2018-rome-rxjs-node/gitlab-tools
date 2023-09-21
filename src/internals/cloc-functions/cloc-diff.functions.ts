@@ -1,8 +1,8 @@
-import { toArray, map, catchError, EMPTY } from "rxjs";
+import { toArray, map, catchError, of } from "rxjs";
 
 import { CONFIG } from "../config";
-import { executeCommandObs } from "../execute-command/execute-command";
-import { ClocDiffStats } from "./cloc-diff.model";
+import { executeCommandObs, getCommandOutput } from "../execute-command/execute-command";
+import { ClocDiffStats, newClocDiffStatsWithError, newClocDiffStatsZeroed } from "./cloc-diff.model";
 
 // runClocDiff is a function that runs the cloc command to calculate the differences (restricted to the selected languages) between 
 // 2 commits of the same repo and returns the result in the form of a ClocDiffLanguageStats array
@@ -19,49 +19,41 @@ export function runClocDiff(
     ).pipe(
         toArray(),
         map((linesFromStdOutAndStdErr) => {
-            let output = ''
-            linesFromStdOutAndStdErr.forEach((line) => {
-                if (line.startsWith('from stderr: ')) {
-                    console.error(`Error in runClocDiff for folder "${folderPath}"\nError: ${line}`)
-                    console.error(`Command erroring:`)
-                    console.error(`${cmd}`)
-                }
-                if (line.startsWith('from stdout: ')) {
-                    output = line.substring('from stdout: '.length)
-                }
-            })
-            if (!output) {
-                throw new Error('We expect one line to start with "from stdout: "')
-            }
+            const output = getCommandOutput(
+                linesFromStdOutAndStdErr,
+                `Error in runClocDiff for folder "${folderPath}"`,
+                cmd
+            )
 
             let diffs: any
             try {
                 diffs = JSON.parse(output);
             } catch (error) {
-                const err = `Error in runClocDiff for folder "${folderPath}"\nError: ${error}
-                Output: ${output}
-                Command: ${cmd}`
-                console.error(err)
-                const clocOutputJson: ClocDiffStats = {
-                    mostRecentCommitSha: mostRecentCommit,
-                    leastRecentCommitSha: leastRecentCommit,
-                    diffs,
-                    error: err
+                if (output.includes('Nothing to count.')) {
+                    return newClocDiffStatsZeroed(mostRecentCommit, leastRecentCommit)
                 }
-                return clocOutputJson
+                const err = `Error parsing JSON returned by cloc-diff command"\nError: ${error}
+Input to Json parser: ${output}
+Command: ${cmd}`
+                console.error(err)
+                const clocOutputWithError = newClocDiffStatsWithError(mostRecentCommit, leastRecentCommit, err)
+                return clocOutputWithError
             }
-            const clocOutputJson: ClocDiffStats = {
+            const clocOutput: ClocDiffStats = {
                 mostRecentCommitSha: mostRecentCommit,
                 leastRecentCommitSha: leastRecentCommit,
                 diffs
             }
-            delete (clocOutputJson as any).header;
-            return clocOutputJson;
+            delete (clocOutput as any).header;
+            return clocOutput;
         }),
         catchError((error) => {
-            console.error(`Error in runClocDiff for folder "${folderPath}"\nError: ${error}`)
+            const err = `Error in buildClocDiffAllCommand for folder "${folderPath}"\nError: ${error}
+Command: ${cmd}`
+            console.error(err)
             console.error(`Command: ${cmd}`)
-            return EMPTY
+            const clocOutputWithError = newClocDiffStatsWithError(mostRecentCommit, leastRecentCommit, err)
+            return of(clocOutputWithError)
         })
     );
 }

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
 const cloc_diff_repos_1 = require("./cloc-diff-repos");
+const repo_functions_1 = require("../../../internals/git-functions/repo.functions");
 describe('flattenClocDiffStatsDict', () => {
     it('should flatten a dictionary of ClocDiffStats objects into a list of flattened objects', () => {
         var _a;
@@ -160,6 +161,21 @@ describe('flattenClocDiffStatsDict', () => {
         const expectedFlattened = [];
         const flattened = (0, cloc_diff_repos_1.flattenMonthlyClocDiffStatsDict)(repoStats);
         (0, chai_1.expect)(flattened).deep.equal(expectedFlattened);
+    });
+});
+describe('reposCompactInFolderObs', () => {
+    it('should return notify a stream of values since the difference between the commits is performed on this repo', (done) => {
+        const repoPath = './';
+        (0, repo_functions_1.reposCompactInFolderObs)(repoPath, new Date(0), new Date(Date.now())).subscribe({
+            next: (repoCompact) => {
+                (0, chai_1.expect)(repoCompact.path).equal(repoPath);
+                (0, chai_1.expect)(repoCompact.commits.length).gt(0);
+                done();
+            },
+            error: (err) => {
+                done(err);
+            },
+        });
     });
 });
 //# sourceMappingURL=cloc-diff-repos.spec.js.map

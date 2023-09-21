@@ -71,15 +71,15 @@ This command produces the following files:
 -   <folder-name>-cloc.json
 -   <folder-name>-cloc.csv
 
-# Calculate the "code-handling" of repos
+# Calculate the "code-tunover" of repos
 
-It is possible to calculate the "code-handling" of repos contained in a folder.
+It is possible to calculate the "code-tunover" of repos contained in a folder.
 
 "code-handlig" between two subsequent commits is the number of lines changed, added and removed between the 2 commits.
 
 The "code-hanlding" calculated on a repo is the sum of all lines added, removed or changed between all pairs of subsequent commits between the start date and the end date.
 
-To calculate the "code-handling" run the command
+To calculate the "code-tunover" run the command
 
 `node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...> --form <fromDate> --to <toDate> --concurrency <numOfConcurrentCalculations> --excludeRepoPaths <pathsToExclude...>`
 
@@ -100,7 +100,7 @@ It is possible to calculate the difference in the code base of a list of repos. 
 
 This means that for each month we consider the last commit of the first commit of the month and first commit of the previous month and then we calculate the differences between these 2 months.
 
-This algorithm is pretty efficient in terms of time since it runs only one difference calculation per month. At the same time it gives an approximation of the "code-handling" that actually occurred in one month. A more precise calculation of "code-handling" can be obtained with the `cloc-diff-repos` option.
+This algorithm is pretty efficient in terms of time since it runs only one difference calculation per month. At the same time it gives an approximation of the "code-tunover" that actually occurred in one month. A more precise calculation of "code-tunover" can be obtained with the `cloc-diff-repos` option.
 
 The repos considered are all the git repos contained in a folder.
 

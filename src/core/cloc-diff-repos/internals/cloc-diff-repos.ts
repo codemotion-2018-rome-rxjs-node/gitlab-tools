@@ -4,11 +4,32 @@ import { writeFileObs } from "observable-fs"
 
 import { concatMap, from, map, mergeMap, tap, toArray } from "rxjs"
 import { CONFIG } from "../../../internals/config"
-import { reposCommitsPairsDiff, calculateMonthlyClocGitDiffs, calculateClocGitDiffs } from "../../../internals/git-functions/repo-cloc-diff.functions"
-import { newRepoCompactWithCommitPairs, newReposWithCommitsByMonth, repoCommitsByMonthRecordsDict, reposCompactInFolderObs } from "../../../internals/git-functions/repo.functions"
+import { reposCommitsPairsDiff, calculateMonthlyClocGitDiffs, calculateClocGitDiffsChildParent } from "../../../internals/git-functions/repo-cloc-diff.functions"
+import { newReposWithCommitsByMonth, repoCommitsByMonthRecordsDict, reposCompactInFolderObs } from "../../../internals/git-functions/repo.functions"
 import { reposCompactWithCommitsByMonthsInFolderObs } from "../../../internals/git-functions/repo.functions"
 import { ClocDiffLanguageStats, ClocDiffStats, RepoMonthlyClocDiffStats } from "../../../internals/cloc-functions/cloc-diff.model"
 import { toCsv } from "@enrico.piccinin/csv-tools"
+
+// calculateCodeTurnover is a function that calculates the cloc diffs on the repos contained in a folder
+export function calculateCodeTurnover(
+    folderPath: string,
+    outdir: string,
+    languages: string[],
+    fromDate = new Date(0),
+    toDate = new Date(Date.now()),
+    concurrency = CONFIG.CONCURRENCY,
+    excludeRepoPaths: string[] = []
+) {
+    return calculateClocDiffsOnRepos(
+        folderPath,
+        outdir,
+        languages,
+        fromDate,
+        toDate,
+        concurrency,
+        excludeRepoPaths
+    )
+}
 
 export function calculateClocDiffsOnRepos(
     folderPath: string,
@@ -22,27 +43,44 @@ export function calculateClocDiffsOnRepos(
     const startTime = new Date().getTime()
     const folderName = path.basename(folderPath);
 
-    let pairsCompleted = 0
-    let pairRemaining = 0
+    let diffsCompleted = 0
+    let diffsRemaining = 0
+    let diffsErrored = 0
 
     return reposCompactInFolderObs(folderPath, fromDate, toDate, concurrency, excludeRepoPaths).pipe(
-        concatMap((repo) => {
-            const repoWithCommitPairs = newRepoCompactWithCommitPairs(repo)
-            return from(repoWithCommitPairs.commitPairs)
+        toArray(),
+        concatMap((repos) => {
+            return from(repos)
+        }),
+        mergeMap((repo) => {
+            const commitWithRepoPath = repo.commits.map(commit => {
+                return { commit, repoPath: repo.path }
+            })
+            // remove the first element of commitWithRepoPath because it may be the first commit hence without parent
+            commitWithRepoPath.shift()
+            return from(commitWithRepoPath)
         }),
         toArray(),
-        concatMap((commitPairs) => {
-            pairRemaining = commitPairs.length
-            const sortedByYearMonth = commitPairs.sort((a, b) => {
-                return a.yearMonth.localeCompare(b.yearMonth)
+        concatMap(commitsWithRepo => {
+            diffsRemaining = commitsWithRepo.length
+            // sort commitsWithRepo by commit date ascending
+            commitsWithRepo.sort((a, b) => {
+                return a.commit.date.getTime() - b.commit.date.getTime()
             })
-            return from(sortedByYearMonth)
+            return from(commitsWithRepo)
         }),
-        mergeMap((commitPair) => {
-            return calculateClocGitDiffs(commitPair, languages).pipe(
-                tap(() => {
-                    console.log(`====>>>> commit pairs completed: ${pairsCompleted++} `)
-                    console.log(`====>>>> commit pairs remaining: ${pairRemaining--} `)
+        mergeMap(({ commit, repoPath }) => {
+            return calculateClocGitDiffsChildParent(commit, repoPath, languages).pipe(
+                tap((stat) => {
+                    if (stat.clocDiff.error) {
+                        diffsErrored++
+                    } else {
+                        diffsCompleted++
+                    }
+                    diffsRemaining--
+                    console.log(`====>>>> commit diffs completed: ${diffsCompleted} `)
+                    console.log(`====>>>> commit diffs remaining: ${diffsRemaining} `)
+                    console.log(`====>>>> commit diffs errored: ${diffsErrored} `)
                 })
             )
         }, concurrency),
@@ -50,7 +88,10 @@ export function calculateClocDiffsOnRepos(
         concatMap((stats) => {
             const outFile = path.join(outdir, `${folderName}-cloc-diff.json`);
             return writeClocDiffJson(stats, outFile).pipe(
-                map(() => stats)
+                tap(() => {
+                    console.log(`\n====>>>> commit diffs errors can be seen in: ${outFile}} (look for error property)\n`)
+                }),
+                map(() => stats),
             )
         }),
         concatMap((stats) => {
@@ -115,6 +156,7 @@ const writeClocDiffJson = (stats: {
 const writeClocCsv = (stats: {
     repoPath: string,
     yearMonth: string;
+    mostRecentCommitDate: string;
     leastRecentCommitDate: string;
     clocDiff: ClocDiffStats;
 }[], outFile: string) => {
@@ -130,6 +172,7 @@ const writeClocCsv = (stats: {
 function statsToCsv(reposStats: {
     repoPath: string,
     yearMonth: string;
+    mostRecentCommitDate: string;
     leastRecentCommitDate: string;
     clocDiff: ClocDiffStats;
 }[]) {
@@ -142,6 +185,7 @@ function statsToCsv(reposStats: {
 function flattenClocDiffStat(stat: {
     repoPath: string,
     yearMonth: string;
+    mostRecentCommitDate: string;
     leastRecentCommitDate: string;
     clocDiff: ClocDiffStats;
 }) {
@@ -151,6 +195,8 @@ function flattenClocDiffStat(stat: {
     const base = {
         repoPath,
         yearMonth,
+        leastRecentCommitDate: stat.leastRecentCommitDate,
+        mostRecentCommitDate: stat.mostRecentCommitDate,
         leastRecentCommit: clocDiffStat.leastRecentCommitSha,
         mostRecentCommit: clocDiffStat.mostRecentCommitSha,
     }

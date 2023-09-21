@@ -67,8 +67,7 @@ exports.reposCompactWithCommitsByMonthsInFolderObs = reposCompactWithCommitsByMo
 // filled with its commits sorted by date ascending
 function newRepoCompact(repoPath, fromDate = new Date(0), toDate = new Date(Date.now())) {
     return (0, commit_functions_1.fetchCommits)(repoPath, fromDate, toDate).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.map)((commits) => {
-        const commitsSorted = commits.sort((a, b) => a.date.getTime() - b.date.getTime());
-        const repo = { path: repoPath, commits: commitsSorted };
+        const repo = { path: repoPath, commits };
         return repo;
     }), (0, rxjs_1.catchError)((err) => {
         console.error(`Error: while reading the commits of repo "${repoPath}" - error:\n ${JSON.stringify(err, null, 2)}`);

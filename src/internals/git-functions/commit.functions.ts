@@ -1,6 +1,6 @@
 import { map, catchError, EMPTY, concatMap, from, filter } from 'rxjs';
 import { executeCommandNewProcessToLinesObs } from '../execute-command/execute-command';
-import { CommitCompact, CommitPair, CommitsByMonths } from './commit.model';
+import { CommitCompact, CommitPair, CommitsByMonths, newCommitPair, yearMonthFromDate } from './commit.model';
 
 // fetchCommit is a function that fetched all the commits from a git repo and returns the sha of each commit and its date
 
@@ -13,10 +13,10 @@ import { CommitCompact, CommitPair, CommitsByMonths } from './commit.model';
 export function fetchCommits(repoPath: string, fromDate = new Date(0), toDate = new Date(Date.now())) {
     if (!repoPath) throw new Error(`Path is mandatory`);
 
-    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an"`;
+    const command = `cd ${repoPath} && git log --pretty=format:"%H,%ad,%an" --no-merges`;
 
     return executeCommandNewProcessToLinesObs(
-        `Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an'],
+        `Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an', '--no-merges'],
         { cwd: repoPath }
     ).pipe(
         map((commits: string) => commits.split('\n')),
@@ -52,11 +52,7 @@ export function newCommitCompact(data: string) {
 export function buildCommitPairArray(commits: CommitCompact[], repoPath: string) {
     const commitPairs: CommitPair[] = []
     for (let i = 0; i < commits.length - 1; i++) {
-        const commitPair: CommitPair = {
-            repoPath,
-            yearMonth: yearMonthFromDate(commits[i + 1].date),
-            commitPair: [commits[i], commits[i + 1]]
-        }
+        const commitPair = newCommitPair(repoPath, commits[i], commits[i + 1])
         commitPairs.push(commitPair)
     }
     return commitPairs
@@ -80,10 +76,4 @@ export function newCommitsByMonth(commits: CommitCompact[]) {
         return acc
     }, {} as CommitsByMonths)
     return commitsByMonth
-}
-
-function yearMonthFromDate(date: Date) {
-    const month = ("0" + (date.getMonth() + 1)).slice(-2)
-    const year = date.getFullYear()
-    return `${year}-${month}`
 }

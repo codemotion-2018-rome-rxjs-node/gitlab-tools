@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.calculateMonthlyClocGitDiffs = exports.calculateClocGitDiffs = exports.reposCommitsPairsDiff = exports.commitDiffPairs = void 0;
+exports.calculateMonthlyClocGitDiffs = exports.calculateClocGitDiffsChildParent = exports.calculateClocGitDiffs = exports.reposCommitsPairsDiff = exports.commitDiffPairs = void 0;
 const rxjs_1 = require("rxjs");
 const cloc_diff_functions_1 = require("../cloc-functions/cloc-diff.functions");
 const cloc_diff_model_1 = require("../cloc-functions/cloc-diff.model");
+const commit_model_1 = require("./commit.model");
 const config_1 = require("../config");
+const execute_command_1 = require("../execute-command/execute-command");
 // commitDiffPairs is a function that take a dictionary where the keys are yearMonth and the values are the array of commits
 // belonging to that yearMonth and returns a dictionary whose keys are the tearMonth
 // and whose values are pairs of commits that are to be used to generate the monthly diff,
@@ -125,6 +127,41 @@ function calculateClocGitDiffs(commitPair, languages) {
     }));
 }
 exports.calculateClocGitDiffs = calculateClocGitDiffs;
+// calculateClocGitDiffsChildParent is a function that receives a CommitCompact object and calculates the cloc diff 
+// between this commit and its parent
+// and returns an object with the yearMonth, the commit date and the cloc diff
+function calculateClocGitDiffsChildParent(commit, repoPath, languages) {
+    const childCommitSha = commit.sha;
+    const parentCommitSha = `${childCommitSha}^1`;
+    console.log(`Starting diff for ${repoPath} -- Date: ${commit.date.toLocaleDateString()}`);
+    return (0, cloc_diff_functions_1.runClocDiff)(childCommitSha, parentCommitSha, languages, repoPath).pipe((0, rxjs_1.concatMap)(clocDiff => {
+        // we are reading the parent of the child commit
+        const cmd = `cd ${repoPath} && git log --pretty=%H,%ad,%an ${parentCommitSha} -n 1`;
+        return (0, execute_command_1.executeCommandObs)('run git-log to find parent', cmd).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.map)((linesFromStdOutAndStdErr) => {
+            const output = (0, execute_command_1.getCommandOutput)(linesFromStdOutAndStdErr, repoPath, cmd);
+            const [_sha, date, _author] = output.split(',');
+            const parentCommitDate = new Date(date).toLocaleDateString();
+            return { clocDiff, parentCommitDate };
+        }), (0, rxjs_1.catchError)((error) => {
+            const err = `Error in runClocDiff for folder "${repoPath}"\nError: ${error}
+Command: ${cmd}`;
+            console.error(err);
+            // in case of error the parentCommitDate is the first date in the Unix epoch
+            const parentCommitDate = new Date(0).toLocaleDateString();
+            const clocOutputWithError = (0, cloc_diff_model_1.newClocDiffStatsWithError)(childCommitSha, parentCommitSha, err);
+            return (0, rxjs_1.of)({ clocDiff: clocOutputWithError, parentCommitDate });
+        }));
+    }), (0, rxjs_1.map)(({ clocDiff, parentCommitDate }) => {
+        return {
+            repoPath,
+            yearMonth: (0, commit_model_1.yearMonthFromDate)(commit.date),
+            mostRecentCommitDate: commit.date.toLocaleDateString(),
+            leastRecentCommitDate: parentCommitDate,
+            clocDiff
+        };
+    }));
+}
+exports.calculateClocGitDiffsChildParent = calculateClocGitDiffsChildParent;
 // calculateMonthlyClocGitDiffs is a function that receives an object with the path to a repo and an array of commit pairs
 // and an array of languagues we are interested in
 // and returns an object with the repoPath and a dictionary where the keys are the yearMonth and the values 

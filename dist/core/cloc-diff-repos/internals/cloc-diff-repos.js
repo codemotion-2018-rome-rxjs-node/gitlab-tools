@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.flattenMonthlyClocDiffStatsDict = exports.calculateMonthlyClocDiffsOnRepos = exports.calculateClocDiffsOnRepos = exports.calculateCodeHandling = void 0;
+exports.flattenMonthlyClocDiffStatsDict = exports.calculateMonthlyClocDiffsOnRepos = exports.calculateClocDiffsOnRepos = exports.calculateCodeTurnover = void 0;
 const path_1 = __importDefault(require("path"));
 const observable_fs_1 = require("observable-fs");
 const rxjs_1 = require("rxjs");
@@ -12,11 +12,11 @@ const repo_cloc_diff_functions_1 = require("../../../internals/git-functions/rep
 const repo_functions_1 = require("../../../internals/git-functions/repo.functions");
 const repo_functions_2 = require("../../../internals/git-functions/repo.functions");
 const csv_tools_1 = require("@enrico.piccinin/csv-tools");
-// calculateCodeHandling is a function that calculates the cloc diffs on the repos contained in a folder
-function calculateCodeHandling(folderPath, outdir, languages, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = config_1.CONFIG.CONCURRENCY, excludeRepoPaths = []) {
+// calculateCodeTurnover is a function that calculates the cloc diffs on the repos contained in a folder
+function calculateCodeTurnover(folderPath, outdir, languages, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = config_1.CONFIG.CONCURRENCY, excludeRepoPaths = []) {
     return calculateClocDiffsOnRepos(folderPath, outdir, languages, fromDate, toDate, concurrency, excludeRepoPaths);
 }
-exports.calculateCodeHandling = calculateCodeHandling;
+exports.calculateCodeTurnover = calculateCodeTurnover;
 function calculateClocDiffsOnRepos(folderPath, outdir, languages, fromDate = new Date(0), toDate = new Date(Date.now()), concurrency = config_1.CONFIG.CONCURRENCY, excludeRepoPaths = []) {
     const startTime = new Date().getTime();
     const folderName = path_1.default.basename(folderPath);
@@ -29,8 +29,6 @@ function calculateClocDiffsOnRepos(folderPath, outdir, languages, fromDate = new
         const commitWithRepoPath = repo.commits.map(commit => {
             return { commit, repoPath: repo.path };
         });
-        // remove the first element of commitWithRepoPath because it may be the first commit hence without parent
-        commitWithRepoPath.shift();
         return (0, rxjs_1.from)(commitWithRepoPath);
     }), (0, rxjs_1.toArray)(), (0, rxjs_1.concatMap)(commitsWithRepo => {
         diffsRemaining = commitsWithRepo.length;
@@ -105,10 +103,12 @@ function statsToCsv(reposStats) {
     return (0, csv_tools_1.toCsv)(csvRecs);
 }
 function flattenClocDiffStat(stat) {
+    const remoteOriginUrl = stat.remoteOriginUrl;
     const repoPath = stat.repoPath;
     const yearMonth = stat.yearMonth;
     const clocDiffStat = stat.clocDiff;
     const base = {
+        remoteOriginUrl,
         repoPath,
         yearMonth,
         leastRecentCommitDate: stat.leastRecentCommitDate,

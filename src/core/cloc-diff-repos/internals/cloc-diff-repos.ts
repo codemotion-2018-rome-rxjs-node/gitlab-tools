@@ -56,8 +56,6 @@ export function calculateClocDiffsOnRepos(
             const commitWithRepoPath = repo.commits.map(commit => {
                 return { commit, repoPath: repo.path }
             })
-            // remove the first element of commitWithRepoPath because it may be the first commit hence without parent
-            commitWithRepoPath.shift()
             return from(commitWithRepoPath)
         }),
         toArray(),
@@ -154,6 +152,7 @@ const writeClocDiffJson = (stats: {
 }
 
 const writeClocCsv = (stats: {
+    remoteOriginUrl: string,
     repoPath: string,
     yearMonth: string;
     mostRecentCommitDate: string;
@@ -170,6 +169,7 @@ const writeClocCsv = (stats: {
 }
 
 function statsToCsv(reposStats: {
+    remoteOriginUrl: string,
     repoPath: string,
     yearMonth: string;
     mostRecentCommitDate: string;
@@ -183,16 +183,19 @@ function statsToCsv(reposStats: {
 }
 
 function flattenClocDiffStat(stat: {
+    remoteOriginUrl: string,
     repoPath: string,
     yearMonth: string;
     mostRecentCommitDate: string;
     leastRecentCommitDate: string;
     clocDiff: ClocDiffStats;
 }) {
+    const remoteOriginUrl = stat.remoteOriginUrl
     const repoPath = stat.repoPath
     const yearMonth = stat.yearMonth
     const clocDiffStat = stat.clocDiff
     const base = {
+        remoteOriginUrl,
         repoPath,
         yearMonth,
         leastRecentCommitDate: stat.leastRecentCommitDate,

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { newCommitsByMonth, fetchCommits } from './commit.functions';
+import { newCommitsByMonth, fetchCommits, fetchOneCommit } from './commit.functions';
 import { CommitCompact, CommitsByMonths } from './commit.model';
 import { toArray } from 'rxjs';
 
@@ -67,6 +67,39 @@ describe('fetchCommits', () => {
             const lastCommit = commits[0];
             expect(lastCommit.sha.includes(' ')).to.be.false;
             done();
+        });
+    });
+});
+
+describe('fetchOneCommit', () => {
+    it('should throw an error if an not existing sha is provided', (done) => {
+        const notExistingCommitSha = 'abc'
+        const repoPath = './'
+        fetchOneCommit(notExistingCommitSha, repoPath, false).subscribe({
+            next: () => {
+                done('should not return a value')
+            },
+            error: (error) => {
+                expect(error instanceof Error).to.be.true;
+                done();
+            },
+            complete: () => {
+                done('should not complete')
+            }
+        });
+    });
+
+    it('should notify the first commit object of this repo', (done) => {
+        const firstCommitOfThisRepo = 'b8ef07cc047ce8cb71648f8ef79fab73b230a6cf'
+        const repoPath = './'
+        fetchOneCommit(firstCommitOfThisRepo, repoPath, false).subscribe({
+            next: (commitCompact) => {
+                expect(commitCompact.sha).equal(firstCommitOfThisRepo);
+                done();
+            },
+            error: (error) => {
+                done(error);
+            },
         });
     });
 });

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.repoCommitsByMonthRecords = exports.repoCommitsByMonthRecordsDict = exports.fillMissingMonths = exports.newReposWithCommitsByMonth = exports.newRepoCompactWithCommitsByMonths = exports.newRepoCompactWithCommitPairs = exports.newRepoCompact = exports.reposCompactWithCommitsByMonthsInFolderObs = exports.isToBeExcluded = exports.reposCompactInFolderObs = exports.cloneRepo = void 0;
+exports.getRemoteOriginUrl = exports.gitHttpsUrlFromGitUrl = exports.repoCommitsByMonthRecords = exports.repoCommitsByMonthRecordsDict = exports.fillMissingMonths = exports.newReposWithCommitsByMonth = exports.newRepoCompactWithCommitsByMonths = exports.newRepoCompactWithCommitPairs = exports.newRepoCompact = exports.reposCompactWithCommitsByMonthsInFolderObs = exports.isToBeExcluded = exports.reposCompactInFolderObs = exports.cloneRepo = void 0;
 const rxjs_1 = require("rxjs");
 const execute_command_1 = require("../execute-command/execute-command");
 const commit_functions_1 = require("./commit.functions");
@@ -210,4 +210,38 @@ function repoCommitsByMonthRecords(reposByMonths) {
     return records;
 }
 exports.repoCommitsByMonthRecords = repoCommitsByMonthRecords;
+// gitHttpsUrlFromGitSshUrl returns the https url of a repo given its ssh url
+// e.g.
+// git@git.ad.rgigroup.com:vita/dbobjects-passvita.git
+// becomes
+// https://git.ad.rgigroup.com/vita/dbobjects-passvita.git
+//
+// if the input is already an https url, the same url is returned
+function gitHttpsUrlFromGitUrl(gitUrl) {
+    if (gitUrl.startsWith('https://'))
+        return gitUrl;
+    if (!gitUrl.startsWith('git@'))
+        throw new Error(`gitUrl must start with "git@"`);
+    const gitSshParts = gitUrl.split('@');
+    const gitSshUrlWithoutInitialGit = gitSshParts[1];
+    const gitSshUrlWithoutGitExtension = gitSshUrlWithoutInitialGit.replace(':', '/');
+    const gitHttpsUrl = `https://${gitSshUrlWithoutGitExtension}`;
+    return gitHttpsUrl;
+}
+exports.gitHttpsUrlFromGitUrl = gitHttpsUrlFromGitUrl;
+// getRemoteOriginUrl returns the remote origin url of a repo
+function getRemoteOriginUrl(repoPath, verbose = true) {
+    const cmd = `cd ${repoPath} && git config --get remote.origin.url`;
+    return (0, execute_command_1.executeCommandObs)('run git  config --get remote.origin.url', cmd).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.map)((linesFromStdOutAndStdErr) => {
+        const output = (0, execute_command_1.getCommandOutput)(linesFromStdOutAndStdErr, repoPath, cmd);
+        return output;
+    }), (0, rxjs_1.catchError)((error) => {
+        const err = `Error in getRemoteOriginUrl for repo "${repoPath}"\nError: ${error}`;
+        if (verbose)
+            console.error(err);
+        // in case of error we return an error
+        throw new Error(err);
+    }));
+}
+exports.getRemoteOriginUrl = getRemoteOriginUrl;
 //# sourceMappingURL=repo.functions.js.map

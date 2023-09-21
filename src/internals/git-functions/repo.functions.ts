@@ -1,6 +1,6 @@
 import { EMPTY, catchError, concatMap, filter, from, map, mergeMap, tap, toArray } from 'rxjs';
 
-import { executeCommandObs } from '../execute-command/execute-command';
+import { executeCommandObs, getCommandOutput } from '../execute-command/execute-command';
 import { newCommitsByMonth, fetchCommits, buildCommitPairArray } from './commit.functions';
 import { RepoCompact, RepoCompactWithCommitPairs, RepoCompactWithCommitsByMonths, ReposWithCommitsByMonths } from './repo.model';
 import { CommitCompact } from './commit.model';
@@ -244,4 +244,42 @@ export function repoCommitsByMonthRecords(reposByMonths: ReposWithCommitsByMonth
     })
 
     return records
+}
+
+// gitHttpsUrlFromGitSshUrl returns the https url of a repo given its ssh url
+// e.g.
+// git@git.ad.rgigroup.com:vita/dbobjects-passvita.git
+// becomes
+// https://git.ad.rgigroup.com/vita/dbobjects-passvita.git
+//
+// if the input is already an https url, the same url is returned
+export function gitHttpsUrlFromGitUrl(gitUrl: string) {
+    if (gitUrl.startsWith('https://')) return gitUrl
+    if (!gitUrl.startsWith('git@')) throw new Error(`gitUrl must start with "git@"`)
+
+    const gitSshParts = gitUrl.split('@')
+    const gitSshUrlWithoutInitialGit = gitSshParts[1]
+    const gitSshUrlWithoutGitExtension = gitSshUrlWithoutInitialGit.replace(':', '/')
+    const gitHttpsUrl = `https://${gitSshUrlWithoutGitExtension}`
+    return gitHttpsUrl
+}
+
+// getRemoteOriginUrl returns the remote origin url of a repo
+export function getRemoteOriginUrl(repoPath: string, verbose = true) {
+    const cmd = `cd ${repoPath} && git config --get remote.origin.url`
+    return executeCommandObs(
+        'run git  config --get remote.origin.url', cmd
+    ).pipe(
+        toArray(),
+        map((linesFromStdOutAndStdErr) => {
+            const output = getCommandOutput(linesFromStdOutAndStdErr, repoPath, cmd)
+            return output
+        }),
+        catchError((error) => {
+            const err = `Error in getRemoteOriginUrl for repo "${repoPath}"\nError: ${error}`
+            if (verbose) console.error(err)
+            // in case of error we return an error
+            throw new Error(err)
+        })
+    )
 }

@@ -32,6 +32,14 @@ switch (command) {
         break;
     default:
         console.log(`Command ${command} not found`);
+        console.log(`Commands allowed: 
+        analyze-merge-requests, 
+        read-group-projects, 
+        clone-group-projects, 
+        read-repos-commits, 
+        cloc-repos, 
+        cloc-diff-repos, 
+        cloc-monthly-diff-repos`);
         break;
 }
 //# sourceMappingURL=command.js.map

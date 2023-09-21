@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.newCommitsByMonth = exports.buildCommitPairArray = exports.newCommitCompact = exports.fetchCommits = void 0;
+exports.newCommitsByMonth = exports.buildCommitPairArray = exports.newCommitCompactFromGitlog = exports.newEmptyCommit = exports.fetchOneCommit = exports.fetchCommits = void 0;
 const rxjs_1 = require("rxjs");
 const execute_command_1 = require("../execute-command/execute-command");
 const commit_model_1 = require("./commit.model");
@@ -17,7 +17,7 @@ function fetchCommits(repoPath, fromDate = new Date(0), toDate = new Date(Date.n
     return (0, execute_command_1.executeCommandNewProcessToLinesObs)(`Fetch commits`, 'git', ['log', '--pretty=format:%H,%ad,%an', '--no-merges'], { cwd: repoPath }).pipe((0, rxjs_1.map)((commits) => commits.split('\n')), (0, rxjs_1.concatMap)((commits) => {
         return (0, rxjs_1.from)(commits);
     }), (0, rxjs_1.map)((commit) => {
-        return newCommitCompact(commit);
+        return newCommitCompactFromGitlog(commit);
     }), (0, rxjs_1.filter)((commit) => {
         return commit.date >= fromDate && commit.date <= toDate;
     }), (0, rxjs_1.catchError)((err) => {
@@ -26,9 +26,46 @@ function fetchCommits(repoPath, fromDate = new Date(0), toDate = new Date(Date.n
     }));
 }
 exports.fetchCommits = fetchCommits;
-// newCommitCompact returns a new CommitCompact object with the given sha and date
-function newCommitCompact(data) {
-    const shaDateAuthor = data.split(',');
+// It uses the git log command to fetch one commit given its sha
+// It returns an observable of an array of strings
+// Each string is a commit sha and date separated by a comma
+// The observable is an error if the command fails
+function fetchOneCommit(commitSha, repoPath, verbose = true) {
+    if (!commitSha)
+        throw new Error(`Path is mandatory`);
+    if (!repoPath)
+        throw new Error(`Repo path is mandatory`);
+    // the -n 1 option limits the number of commits to 1
+    const cmd = `cd ${repoPath} && git log --pretty=%H,%ad,%an ${commitSha} -n 1`;
+    return (0, execute_command_1.executeCommandObs)('run git-log to find parent', cmd).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.map)((linesFromStdOutAndStdErr) => {
+        const output = (0, execute_command_1.getCommandOutput)(linesFromStdOutAndStdErr, repoPath, cmd);
+        const commitCompact = newCommitCompactFromGitlog(output);
+        return commitCompact;
+    }), (0, rxjs_1.catchError)((error) => {
+        const err = `Error in fetchOneCommit for repo "${repoPath} and commit ${commitSha}"\nError: ${error}
+Command: ${cmd}`;
+        if (verbose)
+            console.error(err);
+        // in case of error we return an error
+        throw new Error(err);
+    }));
+}
+exports.fetchOneCommit = fetchOneCommit;
+// newEmptyCommit is a function that returns a new CommitCompact object with no sha neither author and
+// the date set to the beginning of the Unix epoch, i.e. 1970-01-01
+function newEmptyCommit() {
+    const commit = {
+        sha: '',
+        date: new Date(0),
+        author: ''
+    };
+    return commit;
+}
+exports.newEmptyCommit = newEmptyCommit;
+// newCommitCompactFromGitlog returns a new CommitCompact object with the given sha, author and date
+// starting from a string in the format sha,date,author received from the git log command
+function newCommitCompactFromGitlog(commitDataFromGitlog) {
+    const shaDateAuthor = commitDataFromGitlog.split(',');
     const commit = {
         sha: shaDateAuthor[0],
         date: new Date(shaDateAuthor[1]),
@@ -36,7 +73,7 @@ function newCommitCompact(data) {
     };
     return commit;
 }
-exports.newCommitCompact = newCommitCompact;
+exports.newCommitCompactFromGitlog = newCommitCompactFromGitlog;
 // buildCommitPairArray is a function that receives an array of CommitCompact objects and returns an array of CommitPair objects
 // where each CommitPair object contains two CommitCompact objects and the yearMonth of the second commit
 function buildCommitPairArray(commits, repoPath) {

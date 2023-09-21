@@ -64,4 +64,35 @@ describe('fetchCommits', () => {
         });
     });
 });
+describe('fetchOneCommit', () => {
+    it('should throw an error if an not existing sha is provided', (done) => {
+        const notExistingCommitSha = 'abc';
+        const repoPath = './';
+        (0, commit_functions_1.fetchOneCommit)(notExistingCommitSha, repoPath, false).subscribe({
+            next: () => {
+                done('should not return a value');
+            },
+            error: (error) => {
+                (0, chai_1.expect)(error instanceof Error).to.be.true;
+                done();
+            },
+            complete: () => {
+                done('should not complete');
+            }
+        });
+    });
+    it('should notify the first commit object of this repo', (done) => {
+        const firstCommitOfThisRepo = 'b8ef07cc047ce8cb71648f8ef79fab73b230a6cf';
+        const repoPath = './';
+        (0, commit_functions_1.fetchOneCommit)(firstCommitOfThisRepo, repoPath, false).subscribe({
+            next: (commitCompact) => {
+                (0, chai_1.expect)(commitCompact.sha).equal(firstCommitOfThisRepo);
+                done();
+            },
+            error: (error) => {
+                done(error);
+            },
+        });
+    });
+});
 //# sourceMappingURL=commit.functions.spec.js.map

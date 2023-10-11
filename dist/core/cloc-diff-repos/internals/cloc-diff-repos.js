@@ -53,7 +53,7 @@ function calculateClocDiffsOnRepos(folderPath, outdir, languages, fromDate = new
     }, concurrency), (0, rxjs_1.toArray)(), (0, rxjs_1.concatMap)((stats) => {
         const outFile = path_1.default.join(outdir, `${folderName}-cloc-diff.json`);
         return writeClocDiffJson(stats, outFile).pipe((0, rxjs_1.tap)(() => {
-            console.log(`\n====>>>> commit diffs errors can be seen in: ${outFile}} (look for error property)\n`);
+            console.log(`\n====>>>> commit diffs errors can be seen in: ${outFile} (look for error property)\n`);
         }), (0, rxjs_1.map)(() => stats));
     }), (0, rxjs_1.concatMap)((stats) => {
         const outFile = path_1.default.join(outdir, `${folderName}-cloc-diff.csv`);
@@ -107,6 +107,8 @@ function flattenClocDiffStat(stat) {
     const repoPath = stat.repoPath;
     const yearMonth = stat.yearMonth;
     const clocDiffStat = stat.clocDiff;
+    const remoteOriginUrlWithuotFinalDotGit = remoteOriginUrl.endsWith('.git') ? remoteOriginUrl.slice(0, -4) : remoteOriginUrl;
+    const mostRecentCommitUrl = `${remoteOriginUrlWithuotFinalDotGit}/-/commit/${clocDiffStat.mostRecentCommitSha}`;
     const base = {
         remoteOriginUrl,
         repoPath,
@@ -115,6 +117,7 @@ function flattenClocDiffStat(stat) {
         mostRecentCommitDate: stat.mostRecentCommitDate,
         leastRecentCommit: clocDiffStat.leastRecentCommitSha,
         mostRecentCommit: clocDiffStat.mostRecentCommitSha,
+        mostRecentCommitUrl
     };
     return clocDiffStatToCsvWithBase(clocDiffStat.diffs, base, repoPath, clocDiffStat.leastRecentCommitSha, clocDiffStat.mostRecentCommitSha);
 }

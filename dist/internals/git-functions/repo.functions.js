@@ -234,7 +234,7 @@ function getRemoteOriginUrl(repoPath, verbose = true) {
     const cmd = `cd ${repoPath} && git config --get remote.origin.url`;
     return (0, execute_command_1.executeCommandObs)('run git  config --get remote.origin.url', cmd).pipe((0, rxjs_1.toArray)(), (0, rxjs_1.map)((linesFromStdOutAndStdErr) => {
         const output = (0, execute_command_1.getCommandOutput)(linesFromStdOutAndStdErr, repoPath, cmd);
-        return output;
+        return output.split('\n')[0];
     }), (0, rxjs_1.catchError)((error) => {
         const err = `Error in getRemoteOriginUrl for repo "${repoPath}"\nError: ${error}`;
         if (verbose)

@@ -273,7 +273,7 @@ export function getRemoteOriginUrl(repoPath: string, verbose = true) {
         toArray(),
         map((linesFromStdOutAndStdErr) => {
             const output = getCommandOutput(linesFromStdOutAndStdErr, repoPath, cmd)
-            return output
+            return output.split('\n')[0]
         }),
         catchError((error) => {
             const err = `Error in getRemoteOriginUrl for repo "${repoPath}"\nError: ${error}`

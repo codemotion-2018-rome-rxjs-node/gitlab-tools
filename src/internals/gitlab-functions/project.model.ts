@@ -1,14 +1,16 @@
 export type ProjectCompact = {
-  id?: number;
+  id: number;
   description?: string;
   name: string;
   name_with_namespace?: string;
   path?: string;
-  path_with_namespace?: string;
+  path_with_namespace: string;
   ssh_url_to_repo?: string;
   http_url_to_repo?: string;
   web_url?: string;
   created_at: string;
+  last_activity_at: string;
+  updated_at: string;
   forked_from_project?: {
     id: string,
     description: string,
@@ -16,6 +18,7 @@ export type ProjectCompact = {
     name_with_namespace: string,
     path: string,
     path_with_namespace: string,
+    http_url_to_repo: string,
   }
   otherProjectsFoundWithSearchForName?: { nameInSearch: string, namesFound: string[] };
 }

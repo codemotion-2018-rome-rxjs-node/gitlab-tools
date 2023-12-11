@@ -1,8 +1,7 @@
 import axios from "axios"
-import { concatMap, from, map, mergeMap, tap } from "rxjs"
+import { concatMap, from, map, tap } from "rxjs"
 import { GroupCompact } from "./group.model"
-import { CONFIG } from "../config"
-import { readProject } from "./project.functions"
+import { runPagedCommand } from "./paged-command"
 
 export function readGroup(gitLabUrl: string, token: string, groupId: string) {
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}`
@@ -32,21 +31,15 @@ export function fetchGroupDescendantGroups(gitLabUrl: string, token: string, gro
 
 export function fetchAllGroupProjects(gitLabUrl: string, token: string, groupId: string, includeArchived = false) {
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}/projects?include_subgroups=true&per_page=100`
-    return from(axios.get(command, {
-        headers: {
-            "PRIVATE-TOKEN": token
-        }
-    })).pipe(
+    return runPagedCommand(command, token).pipe(
         map(resp => {
-            const projects = includeArchived ? resp.data : resp.data.filter((project: any) => !project.archived)
+            const projects = includeArchived ? resp : resp.filter((project: any) => !project.archived)
             return projects
         }),
         tap(projects => {
-            console.log(`====>>>> number of projects read`, projects.length)
+            console.log(`====>>>> number of projects read from group ${gitLabUrl}`, projects.length)
         }),
-        concatMap(projects => projects),
-        mergeMap((project: any) => {
-            return readProject(gitLabUrl, token, project.id)
-        }, CONFIG.CONCURRENCY),
+        concatMap(projects => from(projects)),
     )
 }
+

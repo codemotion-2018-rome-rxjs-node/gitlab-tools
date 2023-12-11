@@ -1,12 +1,12 @@
 import { Command } from "commander";
-import { readGroupProjects } from "./internals/read-group-projects";
+import { writeGroupProjectsToCsv$ } from "./internals/read-group-projects";
 
 export function launchReadGroupProjects() {
     console.log('====>>>> Launching Read Group Projects')
 
     const { gitLabUrl, token, groupId, outdir } = readParams();
 
-    readGroupProjects(gitLabUrl, token, groupId, outdir).subscribe()
+    writeGroupProjectsToCsv$(gitLabUrl, token, groupId, outdir).subscribe()
 }
 
 function readParams() {

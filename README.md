@@ -1,40 +1,27 @@
 # gitlab-tools
 
-gitlab-tools is a set of tools designed to work with gitlab repos.
+**gitlab-tools** is a set of apps designed to work with gitlab repos.
 
-# Analyze Merge Requests
+## run gitlab-tools apps
 
-It is possible to analyze the merge requests of a gitlab group with the command
+The apps can be launched with the command
 
-`node ./dist/lib/command.js analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+`npx gitlab-tools <app-name> <params>`
 
-or via npx
+or, if we have cloned gitlab-tools repo, from the gitlab-tools repo folder launching the command
 
-` npx "@enrico.piccinin/gitlab-tools" analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+`node ./dist/lib/command.js <app-name> <params>`
 
-# Wrie Gitlab Group Projects
+Executing `npx gitlab-tools` prints on the console the list of available apps.
 
-It is possible to read the details of the projects in a Gitlab group and write them in a csv file. This command can be usefull, for instance, to analize which projects are forked from which other project and when is the latest activity regitered in the project:
+Executing `npx gitlab-tools <app-name> -h` prints on the console the help for the specific app.
 
-`node ./dist/lib/command.js write-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+## apps available
+- [**Analyze Merge Requests**](./src/apps/analyze-merge-requests/README.md): analyze the merge requests of a gitlab group
+- [**Write Gitlab Group Project details**](./src/apps/write-group-projects/README.md): write the GitLab project details of projects in a GitLab group
+- [**Clone Gitlab Projects**](./src/apps/clone-group-repos/README.md): clone all the projects contained in a GitLab group
 
-or via npx
 
-` npx "@enrico.piccinin/gitlab-tools" write-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
-
-After reading the commits, the following files are created:
-
--   <group-name>-projects.csv
-
-# Clone Gitlab Projects
-
-It is possible to clone all the projects contained in a Gitlab group with the command
-
-`node ./dist/lib/command.js clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
-
-or via npx
-
-` npx "@enrico.piccinin/gitlab-tools" clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 ## MISCELLANEOUS
 

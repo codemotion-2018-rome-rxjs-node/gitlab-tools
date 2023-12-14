@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { launchMergeRequestAnalysis } from '../core/analyze-merge-requests/launch-merge-request-analysis';
-import { launchCloneGroupProjects } from '../core/clone-group-repos/launch-clone-group-projects';
-import { launchWriteGroupProjects } from '../core/read-group-projects/launch-read-group-projects';
+import { launchMergeRequestAnalysis } from '../apps/analyze-merge-requests/launch-analyze-merge-request';
+import { launchCloneGroupProjects } from '../apps/clone-group-repos/launch-clone-group-projects';
+import { launchWriteGroupProjects } from '../apps/write-group-projects/launch-write-group-projects';
 
 const command = process.argv[2];
 

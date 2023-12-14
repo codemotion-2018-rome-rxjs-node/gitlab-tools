@@ -1,19 +1,21 @@
-import { Command } from "commander";
-import { writeGroupProjectsToCsv$ } from "./internals/read-group-projects";
 
-export function launchWriteGroupProjects() {
-    console.log('====>>>> Launching Read Group Projects')
+import { Command } from 'commander';
+
+import { launchAnalyzeMergRequestInternal } from './internals/launch-analyze-merge-requests';
+
+export function launchMergeRequestAnalysis() {
+    console.log('====>>>> Launching Merge Request Analysis')
 
     const { gitLabUrl, token, groupId, outdir } = readParams();
 
-    writeGroupProjectsToCsv$(gitLabUrl, token, groupId, outdir).subscribe()
+    launchAnalyzeMergRequestInternal(gitLabUrl, token, groupId, outdir).subscribe()
 }
 
 function readParams() {
     const program = new Command();
 
     program
-        .description('A command to read all the projects of a gitlab group')
+        .description('A command to analyze the merge requests of a gitlab group')
         .requiredOption(
             '--gitLabUrl <string>',
             `gitlab server (e.g. gitlab.example.com)`,
@@ -24,7 +26,7 @@ function readParams() {
         )
         .requiredOption(
             '--groupId <string>',
-            `id of the group to read (e.g. 1234)`,
+            `id of the group to analyze (e.g. 1234)`,
         )
         .option(
             '--outdir <string>',

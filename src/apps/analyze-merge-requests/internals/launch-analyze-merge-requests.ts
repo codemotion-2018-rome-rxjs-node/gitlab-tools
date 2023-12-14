@@ -7,7 +7,7 @@ import { runMergeRequestAnalysis } from "./analyze-merge-requests"
 import { analysisToExcel } from "./to-excel"
 
 
-export function launchMergRequestAnalysisInternal(gitLabUrl: string, token: string, groupId: string, outdir: string) {
+export function launchAnalyzeMergRequestInternal(gitLabUrl: string, token: string, groupId: string, outdir: string) {
     let _name: string
 
     return readGroup$(gitLabUrl, token, groupId).pipe(

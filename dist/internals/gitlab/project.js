@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.cloneProject = exports.readProject = void 0;
 const axios_1 = __importDefault(require("axios"));
 const rxjs_1 = require("rxjs");
-const repo_functions_1 = require("../git-functions/repo.functions");
+const repo_1 = require("../git/repo");
 const path_1 = __importDefault(require("path"));
 function readProject(gitLabUrl, token, projectId) {
     const command = `https://${gitLabUrl}/api/v4/projects/${projectId}`;
@@ -28,7 +28,7 @@ function cloneProject(project, outdir) {
         throw new Error(`No name for repo ${url}`);
     const directory = dirFromNameWithNameSpace(name);
     const outDirPath = path_1.default.join(outdir, directory);
-    return (0, repo_functions_1.cloneRepo)(project.ssh_url_to_repo, outDirPath, project.name);
+    return (0, repo_1.cloneRepo)(project.ssh_url_to_repo, outDirPath, project.name);
 }
 exports.cloneProject = cloneProject;
 function dirFromNameWithNameSpace(pathParts) {

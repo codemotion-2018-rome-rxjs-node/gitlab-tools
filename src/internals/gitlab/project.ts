@@ -2,7 +2,7 @@ import axios from "axios"
 import { from, map } from "rxjs"
 
 import { ProjectCompact } from "./project.model"
-import { cloneRepo } from "../git-functions/repo.functions"
+import { cloneRepo } from "../git/repo"
 import path from "path"
 
 export function readProject(gitLabUrl: string, token: string, projectId: string) {
@@ -34,3 +34,4 @@ export function cloneProject(project: ProjectCompact, outdir: string) {
 function dirFromNameWithNameSpace(pathParts: string) {
     return pathParts.split(' / ').join(path.sep);
 }
+

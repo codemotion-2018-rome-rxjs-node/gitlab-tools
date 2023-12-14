@@ -1,7 +1,7 @@
 import XLSX from 'xlsx';
 
 import { MergeRequestAnalysis, SummaryStatsByAuthor, SummaryStatsByMonth, SummaryStatsByNumDays } from "./analyze-merge-requests.model";
-import { MergeRequestCompact } from '../../../internals/gitlab-functions/merge-request.model';
+import { MergeRequestCompact } from '../../../internals/gitlab/merge-request.model';
 
 export function analysisToExcel(mergeRequestAnalysis: MergeRequestAnalysis) {
     const workbook = XLSX.utils.book_new();

@@ -3,7 +3,7 @@ import { concatMap, from, map, tap } from "rxjs"
 import { GroupCompact } from "./group.model"
 import { runPagedCommand } from "./paged-command"
 
-export function readGroup(gitLabUrl: string, token: string, groupId: string) {
+export function readGroup$(gitLabUrl: string, token: string, groupId: string) {
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}`
     return from(axios.get(command, {
         headers: {
@@ -29,7 +29,7 @@ export function fetchGroupDescendantGroups(gitLabUrl: string, token: string, gro
     )
 }
 
-export function fetchAllGroupProjects(gitLabUrl: string, token: string, groupId: string, includeArchived = false) {
+export function fetchAllGroupProjects$(gitLabUrl: string, token: string, groupId: string, includeArchived = false) {
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}/projects?include_subgroups=true&per_page=100`
     return runPagedCommand(command, token).pipe(
         map(resp => {

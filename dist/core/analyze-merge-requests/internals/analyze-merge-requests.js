@@ -3,9 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.fillGapsInSummaryStatsByMonth = exports.getMinMaxYearMonth = exports.runAnalysis = exports.runMergeRequestAnalysis = void 0;
 const rxjs_1 = require("rxjs");
 const analyze_merge_requests_model_1 = require("./analyze-merge-requests.model");
-const merge_requests_functions_1 = require("../../../internals/gitlab-functions/merge-requests.functions");
+const merge_requests_1 = require("../../../internals/gitlab/merge-requests");
 function runMergeRequestAnalysis(gitLabUrl, token, groupId) {
-    return (0, merge_requests_functions_1.readMergeRequestsForGroup)(gitLabUrl, token, groupId).pipe((0, rxjs_1.map)((mergeRequests) => (0, merge_requests_functions_1.toMergeRequestCompact)(mergeRequests)), (0, rxjs_1.map)(mergeRequestsCompact => {
+    return (0, merge_requests_1.readMergeRequestsForGroup)(gitLabUrl, token, groupId).pipe((0, rxjs_1.map)((mergeRequests) => (0, merge_requests_1.toMergeRequestCompact)(mergeRequests)), (0, rxjs_1.map)(mergeRequestsCompact => {
         return runAnalysis(mergeRequestsCompact);
     }));
 }

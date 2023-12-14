@@ -1,4 +1,4 @@
-import { MergeRequestCompact } from "../../../internals/gitlab-functions/merge-request.model"
+import { MergeRequestCompact } from "../../../internals/gitlab/merge-request.model"
 
 export type MergeRequestAnalysis = {
     mergeRequestsCompact: MergeRequestCompact[]

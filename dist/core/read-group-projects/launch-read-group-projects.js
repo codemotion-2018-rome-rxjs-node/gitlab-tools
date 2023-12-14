@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.launchReadGroupProjects = void 0;
+exports.launchWriteGroupProjects = void 0;
 const commander_1 = require("commander");
 const read_group_projects_1 = require("./internals/read-group-projects");
-function launchReadGroupProjects() {
+function launchWriteGroupProjects() {
     console.log('====>>>> Launching Read Group Projects');
     const { gitLabUrl, token, groupId, outdir } = readParams();
-    (0, read_group_projects_1.readGroupProjects)(gitLabUrl, token, groupId, outdir).subscribe();
+    (0, read_group_projects_1.writeGroupProjectsToCsv$)(gitLabUrl, token, groupId, outdir).subscribe();
 }
-exports.launchReadGroupProjects = launchReadGroupProjects;
+exports.launchWriteGroupProjects = launchWriteGroupProjects;
 function readParams() {
     const program = new commander_1.Command();
     program

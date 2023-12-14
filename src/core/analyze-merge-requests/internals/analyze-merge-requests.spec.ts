@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { fillGapsInSummaryStatsByMonth, getMinMaxYearMonth, runAnalysis } from './analyze-merge-requests';
 import { newStatsByMonth, newSummaryStatsByMonth } from './analyze-merge-requests.model';
-import { MergeRequestCompact } from '../../../internals/gitlab-functions/merge-request.model';
+import { MergeRequestCompact } from '../../../internals/gitlab/merge-request.model';
 
 describe(`getMinMaxYearMonth`, () => {
     it(`should return the min and max year_month values of an array`, () => {

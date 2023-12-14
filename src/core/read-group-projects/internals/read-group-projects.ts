@@ -1,90 +1,99 @@
 import path from "path";
-import { toArray, concatMap, map, tap, from } from "rxjs"
-import { fetchAllGroupProjects, readGroup } from "../../../internals/gitlab-functions/group.functions"
-import { ProjectCompact } from "../../../internals/gitlab-functions/project.model";
+import { toArray, concatMap, tap, from } from "rxjs"
+import { fetchAllGroupProjects$, readGroup$ } from "../../../internals/gitlab/group"
+import { ProjectCompact } from "../../../internals/gitlab/project.model";
 import { toCsv } from "@enrico.piccinin/csv-tools";
 import { writeFileObs } from "observable-fs";
 
+//********************************************************************************************************************** */
+//****************************   APIs                               **************************************************** */
+//********************************************************************************************************************** */
+
+/**
+ * This function writes all projects details of a specific group into a CSV file.
+ * It first reads the group details using the provided GitLab URL, token, and group ID.
+ * Then, it fetches all projects of the group.
+ * Finally, it writes these projects into a CSV file in the specified output directory.
+ * The CSV file is named as "{group name}-projects.csv".
+ * As an example it can be used to identify which projects are forked from other projects.
+ * 
+ * @param gitLabUrl - The URL of the GitLab instance.
+ * @param token - The token to authenticate with the GitLab instance.
+ * @param groupId - The ID of the group whose projects are to be written into the CSV.
+ * @param outdir - The directory where the CSV file will be written.
+ * @returns An Observable that emits the the file path once projects are written into the CSV file.
+ */
 export function writeGroupProjectsToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
     let groupName: string
 
-    return readGroup(gitLabUrl, token, groupId).pipe(
+    return readGroup$(gitLabUrl, token, groupId).pipe(
         concatMap(group => {
             groupName = group.name
-            return fetchAllGroupProjects(gitLabUrl, token, groupId)
+            return fetchAllGroupProjects$(gitLabUrl, token, groupId)
         }),
         toArray(),
         concatMap((projects) => {
             const outFile = path.join(outdir, `${groupName}-projects.csv`);
-            return writeProjectsCsv(projects, [groupName], outFile).pipe(
-                map(() => projects)
-            )
+            return writeProjectsToCsv$(projects, [groupName], outFile)
         }),
     )
 }
 
-export function readMultiGroupProjectsToCsv$(gitLabUrl: string, token: string, groupIds: string[]) {
-    let groupNames: string[] = []
-    return from(groupIds).pipe(
-        concatMap(groupId => readGroup(gitLabUrl, token, groupId)),
-        concatMap(group => {
-            groupNames.push(group.name)
-            return fetchAllGroupProjects(gitLabUrl, token, group.id.toString())
-        }),
-        toArray(),
-    )
-}
-
-export function writeProjectsToCsv$(projects: any[], groupIds: string[], outdir: string) {
-    let groupNames: string[] = []
-    const outFile = path.join(outdir, `${groupIds.join('-')}-groups-projects.csv`);
-    return writeProjectsCsv(projects, groupNames, outFile).pipe(
-        map(() => projects)
-    )
-}
-
+/**
+ * This function reads projects from multiple groups and writes them into a CSV file.
+ * It first reads the projects of each group ID in the provided array using the provided GitLab URL and token.
+ * Then, it writes all these projects into a CSV file in the specified output directory.
+ * The function uses the concatMap operator to ensure that the groups and their projects are processed in order.
+ * As an example it can be used to identify which projects are forked from other projects.
+ * 
+ * @param gitLabUrl - The URL of the GitLab instance.
+ * @param token - The token to authenticate with the GitLab instance.
+ * @param groupIds - An array of group IDs whose projects are to be fetched.
+ * @param outdir - The directory where the CSV file will be written.
+ * @returns An Observable that emits the the file path once projects are written into the CSV file.
+ */
 export function writeMultiGroupProjectsToCsv$(gitLabUrl: string, token: string, groupIds: string[], outdir: string) {
-    return readMultiGroupProjectsToCsv$(gitLabUrl, token, groupIds).pipe(
-        concatMap((projects) => {
-            return writeProjectsToCsv$(projects, groupIds, outdir)
-        }),
-    )
-}
-
-// export function enrichProjects(projects: ProjectCompact[]) {
-//     const projectDict: { [id: string]: ProjectCompact } = {}
-//     projects.forEach(project => {
-//         projectDict[project.id.toString()] = project
-//     })
-//     return projects.map(project => {
-//         const fork_origin_id
-// }
-
-export function _writeMultiGroupProjectsToCsv$(gitLabUrl: string, token: string, groupIds: string[], outdir: string) {
-    let groupNames: string[] = []
-    return from(groupIds).pipe(
-        concatMap(groupId => readGroup(gitLabUrl, token, groupId)),
-        concatMap(group => {
-            groupNames.push(group.name)
-            return fetchAllGroupProjects(gitLabUrl, token, group.id.toString())
-        }),
-        toArray(),
+    return readMultiGroupProjects$(gitLabUrl, token, groupIds).pipe(
         concatMap((projects) => {
             const outFile = path.join(outdir, `${groupIds.join('-')}-groups-projects.csv`);
-            return writeProjectsCsv(projects, groupNames, outFile).pipe(
-                map(() => projects)
-            )
+            return writeProjectsToCsv$(projects, groupIds, outFile)
         }),
     )
 }
 
-const writeProjectsCsv = (projects: ProjectCompact[], groups: string[], outFile: string) => {
+/**
+ * This function reads projects from multiple groups and writes their details them into a CSV file.
+ * It first reads the group details for each group ID in the provided array using the provided GitLab URL and token.
+ * Then, it fetches all projects of each group.
+ * The function uses the concatMap operator to ensure that the groups and their projects are processed in order.
+ * 
+ * @param gitLabUrl - The URL of the GitLab instance.
+ * @param token - The token to authenticate with the GitLab instance.
+ * @param groupIds - An array of group IDs whose projects are to be fetched.
+ * @returns An Observable that emits the projects of all groups once they are fetched.
+ */
+export function readMultiGroupProjects$(gitLabUrl: string, token: string, groupIds: string[]) {
+    return from(groupIds).pipe(
+        concatMap(groupId => readGroup$(gitLabUrl, token, groupId)),
+        concatMap(group => {
+            return fetchAllGroupProjects$(gitLabUrl, token, group.id.toString())
+        }),
+        toArray(),
+    )
+}
+
+
+//********************************************************************************************************************** */
+//****************************               Internals              **************************************************** */
+//********************************************************************************************************************** */
+// these functions may be exported for testing purposes
+
+const writeProjectsToCsv$ = (projects: ProjectCompact[], groups: string[], outFile: string) => {
     return writeFileObs(outFile, projectsToCsv(projects))
         .pipe(
             tap({
                 next: () => console.log(`====>>>> Projects of group ${groups.join(', ')} written in csv file: ${outFile}`),
             }),
-            map(() => projects)
         );
 }
 const projectsToCsv = (projects: ProjectCompact[]) => {

@@ -2,7 +2,7 @@ import path from "path"
 import { concatMap, map, tap } from "rxjs"
 import XLSX from 'xlsx';
 
-import { readGroup } from "../../../internals/gitlab-functions/group.functions"
+import { readGroup$ } from "../../../internals/gitlab/group"
 import { runMergeRequestAnalysis } from "./analyze-merge-requests"
 import { analysisToExcel } from "./to-excel"
 
@@ -10,7 +10,7 @@ import { analysisToExcel } from "./to-excel"
 export function launchMergRequestAnalysisInternal(gitLabUrl: string, token: string, groupId: string, outdir: string) {
     let _name: string
 
-    return readGroup(gitLabUrl, token, groupId).pipe(
+    return readGroup$(gitLabUrl, token, groupId).pipe(
         concatMap(group => {
             _name = group.name
             return runMergeRequestAnalysis(gitLabUrl, token, groupId)

@@ -39,4 +39,4 @@ function fetchAllGroupProjects$(gitLabUrl, token, groupId, includeArchived = fal
     }), (0, rxjs_1.concatMap)(projects => (0, rxjs_1.from)(projects)));
 }
 exports.fetchAllGroupProjects$ = fetchAllGroupProjects$;
-//# sourceMappingURL=group.functions.js.map
+//# sourceMappingURL=group.js.map

@@ -2,13 +2,13 @@
 
 import { launchMergeRequestAnalysis } from '../core/analyze-merge-requests/launch-merge-request-analysis';
 import { launchCloneGroupProjects } from '../core/clone-group-repos/launch-clone-group-projects';
-import { launchReadGroupProjects } from '../core/read-group-projects/launch-read-group-projects';
+import { launchWriteGroupProjects } from '../core/read-group-projects/launch-read-group-projects';
 
 const command = process.argv[2];
 
 const commandsAvailable: { [command: string]: () => void } = {
     'analyze-merge-requests': launchMergeRequestAnalysis,
-    'read-group-projects': launchReadGroupProjects,
+    'write-group-projects': launchWriteGroupProjects,
     'clone-group-projects': launchCloneGroupProjects,
 }
 

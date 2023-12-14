@@ -12,15 +12,15 @@ or via npx
 
 ` npx "@enrico.piccinin/gitlab-tools" analyze-merge-requests --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
-# Read Gitlab Group Projects
+# Wrie Gitlab Group Projects
 
-It is possible to read the all the projects in a Gitlab group with the command and create list of such projects:
+It is possible to read the details of the projects in a Gitlab group and write them in a csv file. This command can be usefull, for instance, to analize which projects are forked from which other project and when is the latest activity regitered in the project:
 
-`node ./dist/lib/command.js read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+`node ./dist/lib/command.js write-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 or via npx
 
-` npx "@enrico.piccinin/gitlab-tools" read-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
+` npx "@enrico.piccinin/gitlab-tools" write-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
 
 After reading the commits, the following files are created:
 
@@ -35,89 +35,6 @@ It is possible to clone all the projects contained in a Gitlab group with the co
 or via npx
 
 ` npx "@enrico.piccinin/gitlab-tools" clone-group-projects --gitLabUrl <gitLab url> --token <PRIVATE_TOKEN> --groupId <id> --outdir <outdir>`
-
-# Read Commits from Repos
-
-It is possible to read the commit records of all repos contained in a folder (after having cloned them, for instance with the `clone-group-projects` command).
-
-To read the commits run the command
-
-`node ./dist/lib/command.js read-repos-commits --folderPath <path to folder> --outdir <outdir>`
-
-or via npx
-
-` npx "@enrico.piccinin/gitlab-tools" read-repos-commits --folderPath <path to folder> --outdir <outdir>`
-
-After reading the commits, the following files are created:
-
--   <folder-name>.json
--   <folder-name>-repos-commits-by-month.json
--   <folder-name>-repos-commits-by-month.csv
-
-# Calculate cloc (number of lines of code)
-
-It is possible to calculate the lines of code of all files in all repos contained in a folder (after having cloned them, e.g. with the `clone-group-projects` command).
-
-To calculate cloc run the command
-
-`node ./dist/lib/command.js cloc-repos --folderPath <path to folder> --outdir <outdir>`
-
-or via npx
-
-` npx "@enrico.piccinin/gitlab-tools" cloc-repos --folderPath <path to folder> --outdir <outdir>`
-
-This command produces the following files:
-
--   <folder-name>-cloc.json
--   <folder-name>-cloc.csv
-
-# Calculate the "code-tunover" of repos
-
-It is possible to calculate the "code-tunover" of repos contained in a folder.
-
-"code-handlig" between two subsequent commits is the number of lines changed, added and removed between the 2 commits.
-
-The "code-hanlding" calculated on a repo is the sum of all lines added, removed or changed between all pairs of subsequent commits between the start date and the end date.
-
-To calculate the "code-tunover" run the command
-
-`node ./dist/lib/command.js cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...> --form <fromDate> --to <toDate> --concurrency <numOfConcurrentCalculations> --excludeRepoPaths <pathsToExclude...>`
-
-`node ./dist/lib/command.js cloc-diff-repos --folderPath ./ --outdir ./out --languages "TypeScript" "Markdown" --from 2023-01-01 --concurrency 10 --excludeRepoPaths "*dbm" "dbobjects*"`
-
-or via npx
-
-` npx "@enrico.piccinin/gitlab-tools" cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...> --form <fromDate> --to <toDate> --concurrency <numOfConcurrentCalculations> --excludeRepoPaths <pathsToExclude...>`
-
-This command produces the following files:
-
--   <folder-name>-cloc-diff.json
--   <folder-name>-cloc-diff.csv
-
-# Calculate the monthly diffences in the code base of repos
-
-It is possible to calculate the difference in the code base of a list of repos. The difference is calculated at a monthly bases.
-
-This means that for each month we consider the last commit of the first commit of the month and first commit of the previous month and then we calculate the differences between these 2 months.
-
-This algorithm is pretty efficient in terms of time since it runs only one difference calculation per month. At the same time it gives an approximation of the "code-tunover" that actually occurred in one month. A more precise calculation of "code-tunover" can be obtained with the `cloc-diff-repos` option.
-
-The repos considered are all the git repos contained in a folder.
-
-To calculate cloc diff run the command
-
-`node ./dist/lib/command.js cloc-monthly-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...> --form fromDate --to toDate`
-
-`node ./dist/lib/command.js cloc-monthly-diff-repos --folderPath ./ --outdir ./out --languages "TypeScript" "Markdown" --from 2023-01-01`
-
-or via npx
-
-` npx "@enrico.piccinin/gitlab-tools" cloc-diff-repos --folderPath <path to folder> --outdir <outdir> --languages <languages...>`
-
-This command produces the following files:
-
--   <folder-name>-monthly-cloc-diff.json
--   <folder-name>-monthly-cloc-diff.csv
 
 ## MISCELLANEOUS
 

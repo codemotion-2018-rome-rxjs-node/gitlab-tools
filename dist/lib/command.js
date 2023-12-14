@@ -7,16 +7,18 @@ const launch_read_group_projects_1 = require("../core/read-group-projects/launch
 const command = process.argv[2];
 const commandsAvailable = {
     'analyze-merge-requests': launch_merge_request_analysis_1.launchMergeRequestAnalysis,
-    'read-group-projects': launch_read_group_projects_1.launchReadGroupProjects,
+    'write-group-projects': launch_read_group_projects_1.launchWriteGroupProjects,
     'clone-group-projects': launch_clone_group_projects_1.launchCloneGroupProjects,
 };
 const functionForCommand = commandsAvailable[command];
 if (functionForCommand) {
     functionForCommand();
 }
-console.log(`Command ${command} not found`);
-console.log(`Commands allowed:`);
-Object.keys(commandsAvailable).forEach(command => {
-    console.log(command);
-});
+else {
+    console.log(`Command ${command} not found`);
+    console.log(`Commands allowed:`);
+    Object.keys(commandsAvailable).forEach(command => {
+        console.log(command);
+    });
+}
 //# sourceMappingURL=command.js.map

@@ -5,7 +5,7 @@ import { writeFileObs } from "observable-fs";
 import { toCsvObs } from "@enrico.piccinin/csv-tools";
 
 import { compareProjects$, readProject$ } from "./project"
-import { getTags } from "./tags"
+import { getLastBranch$, getTags$ } from "./branches-tags"
 import { fetchAllGroupProjects$, readGroup$ } from "./group"
 
 
@@ -33,6 +33,42 @@ export function compareForksInGroup$(gitLabUrl: string, token: string, groupId: 
     )
 }
 
+export function compareForksInGroupWithFileDetails$(gitLabUrl: string, token: string, groupId: string) {
+    return compareForksInGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(compareResult => {
+            // for each diff in diffs create a new object with all the fields of the compareResult and the diff
+            const {diffs, ...compareResultWitNoDiffs} = compareResult
+            const compareResultForFiles = diffs.map(diff => {
+                const diffLines: string[] = diff.diff.split('\n')
+                // numOfLinesAdded and numOfLinesDeleted are the number of lines added and deleted in the diff
+                let numOfLinesAdded = 0
+                let numOfLinesDeleted = 0
+                diffLines.forEach(line => {
+                    if (line.startsWith('+')) {
+                        numOfLinesAdded += 1
+                    }
+                    if (line.startsWith('-')) {
+                        numOfLinesDeleted += 1
+                    }
+                })
+                const extension = path.extname(diff.new_path)
+                return {
+                    ...compareResultWitNoDiffs,
+                    new_path: diff.new_path,
+                    old_path: diff.old_path,
+                    extension,
+                    numOfLinesAdded,
+                    numOfLinesDeleted,
+                    renamed_file: diff.renamed_file,
+                    deleted_file: diff.deleted_file,
+                    generated_file: diff.generated_file?? false,
+                }
+            })
+            return compareResultForFiles
+        }),
+    )
+}
+
 export function writeCompareForksInGroupToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
     let groupName: string
 
@@ -41,10 +77,34 @@ export function writeCompareForksInGroupToCsv$(gitLabUrl: string, token: string,
             groupName = group.name
             return compareForksInGroup$(gitLabUrl, token, groupId)
         }),
+        map(compareResult => {
+            // delete the diffs field from the compareResult
+            delete (compareResult as { diffs?: any }).diffs
+            return compareResult
+        }),
         toCsvObs(),
         toArray(),
         concatMap((compareResult) => {
-            const outFile = path.join(outdir, `${groupName}-compare-result.csv`);
+            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+            const outFile = path.join(outdir, `${groupName}-compare-result-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        }),
+    )
+}
+
+export function writeCompareForksWithFileDetailsInGroupToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
+    let groupName: string
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksInGroupWithFileDetails$(gitLabUrl, token, groupId)
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+            const outFile = path.join(outdir, `${groupName}-compare-result-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
             return writeCompareResultsToCsv$(compareResult, groupName, outFile)
         }),
     )
@@ -84,33 +144,55 @@ export function compareForkFromLastTagOrDefaultBranch$(gitLabUrl: string, token:
         }),
     )
     
-    const lastTag$ = getTags(gitLabUrl, token, projectId).pipe(
+    const lastTag$ = getTags$(gitLabUrl, token, projectId).pipe(
         map(tags => {
             if (tags.length === 0) {
                 return null
             }
+            // the last tag is the first in the array
             return tags[0]
         })
     )
+
+    const lastBranch$ = getLastBranch$(gitLabUrl, token, projectId)
+
+    const lastTagOrBranch$ = forkJoin([lastTag$, lastBranch$]).pipe(
+        map(([tag, branch]) => {
+            if (tag === null && branch === null) {
+                console.error(`====>>>> Error: project ${projectId} has no tags or branches`)
+                return null
+            }
+            if (tag === null) {
+                return branch
+            }
+            if (branch === null) {
+                return tag
+            }
+            if (tag.commit.committed_date > branch.commit.committed_date) {
+                return tag
+            }
+            return branch
+        })
+    )
     
-    return forkJoin([projectdata$, lastTag$]).pipe(
-        map(([projectData, lastTag]) => {
-            const lastTagName = lastTag ? lastTag.name : projectData.default_branch
-            return {projectData, lastTagName}
+    return forkJoin([projectdata$, lastTagOrBranch$]).pipe(
+        map(([projectData, lastTagOrBranch]) => {
+            const lastTagOrBranchName = lastTagOrBranch ? lastTagOrBranch.name : projectData.default_branch
+            return {projectData, lastTagOrBranchName}
         }),
-        filter(({projectData, lastTagName}) => {
-            if (lastTagName === undefined || projectData.upstream_repo_default_branch === undefined) {
-                console.error(`====>>>> Error: lastTagName or upstream_repo_default_branch for project ${projectData.project_name} is undefined. LastTagName: ${lastTagName}, upstream_repo_default_branch: ${projectData.upstream_repo_default_branch}`)
+        filter(({projectData, lastTagOrBranchName}) => {
+            if (lastTagOrBranchName === undefined || projectData.upstream_repo_default_branch === undefined) {
+                console.error(`====>>>> Error: lastTagName or upstream_repo_default_branch for project ${projectData.project_name} is undefined. LastTagName: ${lastTagOrBranchName}, upstream_repo_default_branch: ${projectData.upstream_repo_default_branch}`)
                 return false
             }
             return true
         }),
-        concatMap(({projectData, lastTagName}) => {
+        concatMap(({projectData, lastTagOrBranchName}) => {
             const from_fork_to_upstream$ = compareProjects$(
                 gitLabUrl,
                 token,
                 projectData.project_id.toString(),
-                lastTagName,
+                lastTagOrBranchName,
                 projectData.upstream_repo_id!,
                 projectData.upstream_repo_default_branch!
             )
@@ -120,15 +202,15 @@ export function compareForkFromLastTagOrDefaultBranch$(gitLabUrl: string, token:
                 projectData.upstream_repo_id!,
                 projectData.upstream_repo_default_branch!,
                 projectData.project_id.toString(),
-                lastTagName
+                lastTagOrBranchName
             )
             return forkJoin([from_fork_to_upstream$, from_upstream_to_fork$]).pipe(
                 map(([from_fork_to_upstream, from_upstream_to_fork]) => {
-                    return {from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagName}
+                    return {from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName}
                 })
             )
         }),
-        map(({from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagName}) => {
+        map(({from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName}) => {
             const num_commits_ahead = from_upstream_to_fork.commits.length
             const num_commits_behind = from_fork_to_upstream.commits.length
             // build the url for GitLab that shows the commits ahead and behind for the forked project, a url like, for instance:
@@ -141,11 +223,11 @@ export function compareForkFromLastTagOrDefaultBranch$(gitLabUrl: string, token:
             } else {
                 const from_upstream_fork_url_parts = from_upstream_fork_url.split('-')
                 const base_part = from_upstream_fork_url_parts[0]
-                ahead_behind_commits_url = `${base_part}-/tree/${lastTagName}?ref_type=tags`
+                ahead_behind_commits_url = `${base_part}-/tree/${lastTagOrBranchName}`
             }
             return {
                 project_name: projectData.project_name_with_namespace,
-                tag_name: lastTagName,
+                tag_or_branch: lastTagOrBranchName,
                 upstream_repo_name: projectData.upstream_repo_name,
                 num_commits_ahead,
                 num_commits_behind,
@@ -155,7 +237,10 @@ export function compareForkFromLastTagOrDefaultBranch$(gitLabUrl: string, token:
                 upstream_repo_forks_count: projectData.upstream_repo_forks_count,
                 web_url_from_upstream_to_fork: from_upstream_to_fork.web_url,
                 web_url_from_fork_to_upstream: from_fork_to_upstream.web_url,
-                ahead_behind_commits_url: ahead_behind_commits_url
+                ahead_behind_commits_url: ahead_behind_commits_url,
+                // diffs are the same for both from_fork_to_upstream and from_upstream_to_fork
+                // diffs is optional since it is not used in the csv file
+                diffs: from_fork_to_upstream.diffs
             }
         })
     )

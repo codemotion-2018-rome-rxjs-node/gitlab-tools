@@ -2,6 +2,7 @@
 
 import { launchMergeRequestAnalysis } from '../apps/analyze-merge-requests/launch-analyze-merge-request';
 import { launchCloneGroupProjects } from '../apps/clone-group-repos/launch-clone-group-projects';
+import { launchCompareForksWithUpstream } from '../apps/compare-forks-with-upstream/launch-compare-forks-with-upstream';
 import { launchWriteGroupProjects } from '../apps/write-group-projects/launch-write-group-projects';
 
 const command = process.argv[2];
@@ -10,6 +11,7 @@ const commandsAvailable: { [command: string]: () => void } = {
     'analyze-merge-requests': launchMergeRequestAnalysis,
     'write-group-projects': launchWriteGroupProjects,
     'clone-group-projects': launchCloneGroupProjects,
+    'compare-forks-with-upstream':launchCompareForksWithUpstream,
 }
 
 const functionForCommand = commandsAvailable[command];

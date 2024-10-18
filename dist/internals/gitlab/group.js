@@ -15,6 +15,12 @@ function readGroup$(gitLabUrl, token, groupId) {
         }
     })).pipe((0, rxjs_1.map)(resp => {
         return resp.data;
+    }), (0, rxjs_1.catchError)(err => {
+        console.error(`====>>>> Error reading group ${groupId} from remote ${gitLabUrl}`);
+        if (err.code === 'ERR_BAD_REQUEST') {
+            console.error(`Status: ${err.response.status} - ${err.response.statusText}`);
+        }
+        return rxjs_1.EMPTY;
     }));
 }
 exports.readGroup$ = readGroup$;
@@ -35,7 +41,7 @@ function fetchAllGroupProjects$(gitLabUrl, token, groupId, includeArchived = fal
         const projects = includeArchived ? resp : resp.filter((project) => !project.archived);
         return projects;
     }), (0, rxjs_1.tap)(projects => {
-        console.log(`====>>>> number of projects read from group ${gitLabUrl}`, projects.length);
+        console.log(`====>>>> number of projects read from group with id "${groupId}"`, projects.length);
     }), (0, rxjs_1.concatMap)(projects => (0, rxjs_1.from)(projects)));
 }
 exports.fetchAllGroupProjects$ = fetchAllGroupProjects$;

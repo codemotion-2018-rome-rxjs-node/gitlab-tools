@@ -141,3 +141,4 @@ commands.txt
 scripts-private/
 temp/abc.txt
 temp/
+src/lib/command.ts

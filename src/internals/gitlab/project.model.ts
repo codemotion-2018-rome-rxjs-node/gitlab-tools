@@ -11,6 +11,7 @@ export type ProjectCompact = {
   created_at: string;
   last_activity_at: string;
   updated_at: string;
+  default_branch: string;
   forked_from_project?: {
     id: string,
     description: string,
@@ -19,6 +20,8 @@ export type ProjectCompact = {
     path: string,
     path_with_namespace: string,
     http_url_to_repo: string,
+    forks_count: number,
+    default_branch: string,
   }
   otherProjectsFoundWithSearchForName?: { nameInSearch: string, namesFound: string[] };
 }
@@ -147,4 +150,11 @@ export interface ContainerExpirationPolicy {
 export interface Permissions {
   project_access?: null;
   group_access?: null;
+}
+
+
+export type ProjectCompare = {
+  commits: Array<any>;
+  diffs: Array<any>;
+  web_url: string;
 }

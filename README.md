@@ -20,6 +20,7 @@ Executing `npx gitlab-tools <app-name> -h` prints on the console the help for th
 - [**Analyze Merge Requests**](./src/apps/analyze-merge-requests/README.md): analyze the merge requests of a gitlab group
 - [**Write Gitlab Group Project details**](./src/apps/write-group-projects/README.md): write to a csv file the GitLab project details of projects in a GitLab group
 - [**Clone Gitlab Projects**](./src/apps/clone-group-repos/README.md): clone all the projects contained in a GitLab group
+- [**Compare forks with upstream**](./src/apps/compare-forks-with-upstream/README.md): compare forked projects in GitLab group with upstream
 
 
 

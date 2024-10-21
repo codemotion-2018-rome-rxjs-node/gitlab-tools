@@ -206,11 +206,11 @@ export function compareForkFromLastTagOrDefaultBranch$(gitLabUrl: string, token:
             )
             return forkJoin([from_fork_to_upstream$, from_upstream_to_fork$]).pipe(
                 map(([from_fork_to_upstream, from_upstream_to_fork]) => {
-                    return {from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName}
+                    return {from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName: projectData.upstream_repo_default_branch}
                 })
             )
         }),
-        map(({from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName}) => {
+        map(({from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName}) => {
             const num_commits_ahead = from_upstream_to_fork.commits.length
             const num_commits_behind = from_fork_to_upstream.commits.length
             // build the url for GitLab that shows the commits ahead and behind for the forked project, a url like, for instance:
@@ -221,14 +221,15 @@ export function compareForkFromLastTagOrDefaultBranch$(gitLabUrl: string, token:
             if (!from_upstream_fork_url.includes('/-/')) {
                 console.error(`====>>>> Error: from_upstream_fork_url ${from_upstream_fork_url} does not contain '/-/'`)
             } else {
-                const from_upstream_fork_url_parts = from_upstream_fork_url.split('-')
+                const from_upstream_fork_url_parts = from_upstream_fork_url.split('/-/')
                 const base_part = from_upstream_fork_url_parts[0]
-                ahead_behind_commits_url = `${base_part}-/tree/${lastTagOrBranchName}`
+                ahead_behind_commits_url = `${base_part}/-/tree/${lastTagOrBranchName}`
             }
             return {
                 project_name: projectData.project_name_with_namespace,
-                tag_or_branch: lastTagOrBranchName,
+                fork_tag_or_branch: lastTagOrBranchName,
                 upstream_repo_name: projectData.upstream_repo_name,
+                upstream_repo_tag_or_branch: upstreamBranchName,
                 num_commits_ahead,
                 num_commits_behind,
                 created: projectData.created_at,

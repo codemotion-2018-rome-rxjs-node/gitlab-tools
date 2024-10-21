@@ -37,6 +37,7 @@ export function fetchGroupDescendantGroups(gitLabUrl: string, token: string, gro
 }
 
 export function fetchAllGroupProjects$(gitLabUrl: string, token: string, groupId: string, includeArchived = false) {
+    console.log(`====>>>> reading all projects from group with id "${groupId}"`)
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}/projects?include_subgroups=true&per_page=100`
     return runPagedCommand(command, token).pipe(
         map(resp => {

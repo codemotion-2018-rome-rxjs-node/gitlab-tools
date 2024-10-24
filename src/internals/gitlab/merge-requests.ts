@@ -5,7 +5,7 @@ import { runPagedCommand } from "./paged-command";
 export function readMergeRequestsForGroup(gitLabUrl: string, token: string, groupId: string) {
     const command = listMergeRequestsCommand(gitLabUrl, groupId)
 
-    return runPagedCommand(command, token)
+    return runPagedCommand(command, token, 'merge_requests')
 }
 
 export function toMergeRequestCompact(mergeRequests: MergeRequest[]) {

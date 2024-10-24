@@ -55,3 +55,23 @@ export function compareProjects$(
         })
     )
 }
+
+export function compareFromTagOrBranchToCommit$(
+    gitLabUrl: string, 
+    token: string, 
+    projectID:string,
+    fromBranchTagName: string,  
+    toCommit: string,
+    straight= true
+) {
+    const command = `https://${gitLabUrl}/api/v4/projects/${projectID}/repository/compare?from=${fromBranchTagName}&to=${toCommit}&straight=${straight}`
+    return from(axios.get(command, {
+        headers: {
+            "PRIVATE-TOKEN": token
+        }
+    })).pipe(
+        map(resp => {
+            return resp.data as ProjectCompare
+        })
+    )
+}

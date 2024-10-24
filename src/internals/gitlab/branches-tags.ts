@@ -1,5 +1,5 @@
 import axios from "axios"
-import { concatMap, from, map } from "rxjs"
+import { from, map } from "rxjs"
 import { runPagedCommand } from "./paged-command"
 
 export function getTags$(gitLabUrl: string, token: string, projectId: string) {
@@ -17,15 +17,13 @@ export function getTags$(gitLabUrl: string, token: string, projectId: string) {
 
 
 export function getBranches$(gitLabUrl: string, token: string, projectId: string) {
+    console.log(`Start reading branches for project ${projectId}`)
     const command = getBranchesCommand(gitLabUrl, projectId)
-    return runPagedCommand(command, token).pipe(
-        concatMap(branches => from(branches)),
-    )
+    return runPagedCommand(command, token, 'branches')
 }
 
 export function getLastBranch$(gitLabUrl: string, token: string, projectId: string) {
-    const command = getBranchesCommand(gitLabUrl, projectId)
-    return runPagedCommand(command, token).pipe(
+    return getBranches$(gitLabUrl, token, projectId).pipe(
         map(branches => {
             // sort by commit date
             branches.sort((a: any, b: any) => {

@@ -7,7 +7,7 @@ import path from "path"
 export function getUsers$(gitLabUrl: string, token: string) {
     console.log(`====>>>> reading all users`)
     const command = `https://${gitLabUrl}/api/v4/users?per_page=100`
-    return runPagedCommand(command, token).pipe(
+    return runPagedCommand(command, token, 'users').pipe(
         tap(users => {
             console.log(`====>>>> number of users read from GitLab: `, users.length)
         }),

@@ -1,12 +1,12 @@
 import { Command } from "commander";
-import { writeCompareForksWithFileDetailsInGroupToCsv$ } from "../../internals/gitlab/compare-forks";
+import { writeCompareForksWithUpstreamFileDetailsInGroupToCsv$ } from "../../internals/gitlab/compare-forks";
 
 export function launchCompareForksWithUpstream() {
     console.log('====>>>> Launching Compare Forks with Upstream <<<<====');
 
     const { gitLabUrl, token, groupId, outdir } = readParams();
 
-    writeCompareForksWithFileDetailsInGroupToCsv$(gitLabUrl, token, groupId, outdir).subscribe()
+    writeCompareForksWithUpstreamFileDetailsInGroupToCsv$(gitLabUrl, token, groupId, outdir).subscribe()
 }
 
 function readParams() {

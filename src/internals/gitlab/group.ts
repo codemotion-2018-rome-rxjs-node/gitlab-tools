@@ -36,16 +36,17 @@ export function fetchGroupDescendantGroups(gitLabUrl: string, token: string, gro
     )
 }
 
-export function fetchAllGroupProjects$(gitLabUrl: string, token: string, groupId: string, includeArchived = false) {
+export function fetchAllGroupProjects$(gitLabUrl: string, token: string, groupId: string, groupName = '', includeArchived = false) {
     console.log(`====>>>> reading all projects from group with id "${groupId}"`)
     const command = `https://${gitLabUrl}/api/v4/groups/${groupId}/projects?include_subgroups=true&per_page=100`
-    return runPagedCommand(command, token).pipe(
+    return runPagedCommand(command, token, 'groups').pipe(
         map(resp => {
             const projects = includeArchived ? resp : resp.filter((project: any) => !project.archived)
             return projects
         }),
         tap(projects => {
-            console.log(`====>>>> number of projects read from group with id "${groupId}"`, projects.length)
+            const groupNameOrId = groupName ? groupName : groupId
+            console.log(`====>>>> number of projects read from group "${groupNameOrId}"`, projects.length)
         }),
         concatMap(projects => from(projects)),
     )

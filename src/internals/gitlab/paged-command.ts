@@ -1,7 +1,36 @@
 import axios from "axios"
 import { from, map, expand, EMPTY, last } from "rxjs"
 
-export function runPagedCommand(command: string, token: string, itemType: string = 'items') {
+
+/**
+ * Executes a paged command and retrieves all items across multiple pages.
+ * 
+ * @param {string} command - The command to be executed.
+ * @param {string} token - The authentication token.
+ * @param {string} [itemType='items'] - The type of items being retrieved (used for logging).
+ * @param {(input: any) => boolean} [stop] - Optional stop condition function that takes the current items and returns a boolean.
+ * @returns {Observable<any[]>} - An observable that emits the collected items when all pages have been processed.
+ * 
+ * The function follows these steps:
+ * 1. Initialize an empty array to store items and a variable to hold the total number of pages.
+ * 2. Make the first API call using the provided command and token.
+ * 3. Process the response from the first call:
+ *    - Extract the items from the response and add them to the items array.
+ *    - Get the total number of pages from the response headers if present, in not present the signal of end of pagination
+ *      will be the fact the header 'x-next-page' will be the empty string.
+ *      Different APIs use different ways to signal the end of pagination.
+ *    - Log the progress.
+ *    - Prepare the function to get the next page number.
+ * 4. Use the `expand` operator to handle pagination:
+ *    - Check if the stop condition is met; if so, log and terminate the process.
+ *    - Determine the next page number from the response headers.
+ *    - If there are no more pages, log and terminate the process.
+ *    - Make the next API call for the subsequent page.
+ *    - Process the response similarly to the first call.
+ * 5. Use the `last` operator to ensure the observable completes after processing all pages.
+ * 6. Map the final result to return only the collected items.
+ **/
+export function runPagedCommand(command: string, token: string, itemType: string = 'items', stop?: (input: any) => boolean) {
     const items: any[] = []
     let totPages: string
     const firstPagedCall = firstCall(command, token)
@@ -19,6 +48,11 @@ export function runPagedCommand(command: string, token: string, itemType: string
             return { items, _nextPage, resp }
         }),
         expand(({ items, _nextPage, resp }) => {
+            const stopCondition = stop ? stop(items) : false
+            if (stopCondition) {
+                console.log(`>>>>> Reading of ${itemType} stopped because the stop condition has been met`)
+                return EMPTY
+            }
             // Different APIs use different ways to signal the end of pagination.
             // * For instance, the "users" API returns the 'x-total-pages' header in the response.
             // * The "commits" API returns the 'x-next-page' header in the response to each call.

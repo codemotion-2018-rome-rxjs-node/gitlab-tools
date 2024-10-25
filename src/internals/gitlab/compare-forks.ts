@@ -6,8 +6,9 @@ import { toCsvObs } from "@enrico.piccinin/csv-tools";
 
 import { compareFromTagOrBranchToCommit$, compareProjects$, readProject$ } from "./project"
 import { getLastBranch$, getTags$ } from "./branches-tags"
-import { fetchAllGroupProjects$, readGroup$ } from "./group"
+import { readGroup$ } from "./group"
 import { getFirstCommitSinceCreation$ } from "./commits";
+import { readForkedProjectsForGroup$ } from "./forks";
 
 
 
@@ -15,12 +16,13 @@ import { getFirstCommitSinceCreation$ } from "./commits";
 //****************************   APIs                               **************************************************** */
 //********************************************************************************************************************** */
 
+
+// COMPARE WITH UPSTREAM
+// for the function compareForksWithUpstreamInGroup$ we do not pass the projectsWithNoChanges array since even if
+// there are no changes in a project we still generate a comparison result for it with no commits ahed or behind
 export function compareForksWithUpstreamInGroup$(gitLabUrl: string, token: string, groupId: string, groupName: string) {
     let count = 0
-    return fetchAllGroupProjects$(gitLabUrl, token, groupId, groupName).pipe(
-        filter(project => {
-            return project.forked_from_project !== undefined
-        }),
+    return readForkedProjectsForGroup$(gitLabUrl, token, groupId, groupName).pipe(
         concatMap(project => {
             count += 1
             console.log(`====>>>> Analyzing project ${project.name_with_namespace}`)
@@ -34,34 +36,21 @@ export function compareForksWithUpstreamInGroup$(gitLabUrl: string, token: strin
     )
 }
 
-export function compareForksWithFirstCommitInGroup$(gitLabUrl: string, token: string, groupId: string, groupName: string) {
-    let count = 0
-    return fetchAllGroupProjects$(gitLabUrl, token, groupId, groupName).pipe(
-        filter(project => {
-            return project.forked_from_project !== undefined
-        }),
-        concatMap(project => {
-            count += 1
-            console.log(`====>>>> Analyzing project ${project.name_with_namespace}`)
-            return compareForkLastTagOrBranchWithFirstCommit$(gitLabUrl, token, project.id.toString())
-        }),
-        tap({
-            complete: () => {
-                console.log(`====>>>> Total number of for projects analyzed`, count)
-            }
-        })
-    )
-}
-
-export function compareForksInGroupWithUpstreamFileDetails$(gitLabUrl: string, token: string, groupId: string, groupName: string) {
+// for the function compareForksWithUpstreamInGroup$ we do pass the projectsWithNoChanges array since there may be cases
+// when a project has been forked but no commits have been made to it and to the upstream project since the fork was created.
+// In this case there would be no diffs and therefore we do not generate any comparison result for the project.
+// In this cases we want to add the project name to the projectsWithNoChanges array so that we have evidence that the project
+// has no changes.
+export function compareForksInGroupWithUpstreamFileDetails$(
+    gitLabUrl: string, token: string, groupId: string, groupName: string, projectsWithNoChanges: string[]
+) {
     return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName).pipe(
-        concatMap(newCompareResultWithDiffs),
-    )
-}
-
-export function compareForksInGroupWithFirstCommitFileDetails$(gitLabUrl: string, token: string, groupId: string, groupName: string) {
-    return compareForksWithFirstCommitInGroup$(gitLabUrl, token, groupId, groupName).pipe(
-        concatMap(newCompareResultWithDiffs),
+        tap(comparisonResult => {
+            if (comparisonResult.diffs.length === 0) {
+                projectsWithNoChanges.push(comparisonResult.project_name!)
+            }
+        }),
+        concatMap(newComparisonResultWithDiffs),
     )
 }
 
@@ -88,13 +77,82 @@ export function writeCompareForksInGroupWithUpstreamToCsv$(gitLabUrl: string, to
     )
 }
 
-export function writeCompareForksInGroupWithFirstCommitToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
+export function writeCompareForksWithUpstreamFileDetailsInGroupToCsv$(
+    gitLabUrl: string, token: string, groupId: string, outdir: string
+) {
     let groupName: string
+    const projectsWithNoChanges: string[] = []
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
 
     return readGroup$(gitLabUrl, token, groupId).pipe(
         concatMap(group => {
             groupName = group.name
-            return compareForksWithFirstCommitInGroup$(gitLabUrl, token, groupId, groupName)
+            return compareForksInGroupWithUpstreamFileDetails$(gitLabUrl, token, groupId, groupName, projectsWithNoChanges)
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
+        }),
+    )
+}
+//======================================================================================================================
+
+
+// COMPARE WITH FIRST COMMIT
+// for the function compareForksWithFirstCommitInGroup$ we do need to pass the projectsWithNoChanges array
+// the reason is that there are cases when a project has been forked but no commits have been made to it
+// since the fork was created. In this case we do not generate a comparison result for the project because there 
+// is no commit to compare with. 
+// In such cases we add the project name to the projectsWithNoChanges array and we return it
+export function compareForksWithFirstCommitInGroup$(
+    gitLabUrl: string, token: string, groupId: string, groupName: string, projectsWithNoChanges: string[]
+) {
+    let count = 0
+    return readForkedProjectsForGroup$(gitLabUrl, token, groupId, groupName).pipe(
+        concatMap(project => {
+            count += 1
+            console.log(`====>>>> Analyzing project ${project.name_with_namespace}`)
+            return compareForkLastTagOrBranchWithFirstCommit$(gitLabUrl, token, project.id.toString(), project.name_with_namespace, projectsWithNoChanges)
+        }),
+        tap({
+            complete: () => {
+                console.log(`====>>>> Total number of for projects analyzed`, count)
+            }
+        })
+    )
+}
+
+export function compareForksInGroupWithFirstCommitFileDetails$(
+    gitLabUrl: string, token: string, groupId: string, groupName: string, projectsWithNoChanges: string[]
+) {
+    return compareForksWithFirstCommitInGroup$(gitLabUrl, token, groupId, groupName, projectsWithNoChanges).pipe(
+        tap(comparisonResult => {
+            if (comparisonResult.diffs.length === 0) {
+                projectsWithNoChanges.push(comparisonResult.project_name!)
+            }
+        }),
+        concatMap(newComparisonResultWithDiffs),
+    )
+}
+
+export function writeCompareForksInGroupWithFirstCommitToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
+    let groupName: string
+
+    const projectsWithNoChanges: string[] = []
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksWithFirstCommitInGroup$(gitLabUrl, token, groupId, groupName, projectsWithNoChanges)
         }),
         map(compareResult => {
             // delete the diffs field from the compareResult
@@ -104,45 +162,38 @@ export function writeCompareForksInGroupWithFirstCommitToCsv$(gitLabUrl: string,
         toCsvObs(),
         toArray(),
         concatMap((compareResult) => {
-            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
             const outFile = path.join(outdir, `${groupName}-compare-with-first-commit-${timeStampYYYYMMDDHHMMSS}.csv`);
             return writeCompareResultsToCsv$(compareResult, groupName, outFile)
         }),
-    )
-}
-
-export function writeCompareForksWithUpstreamFileDetailsInGroupToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
-    let groupName: string
-
-    return readGroup$(gitLabUrl, token, groupId).pipe(
-        concatMap(group => {
-            groupName = group.name
-            return compareForksInGroupWithUpstreamFileDetails$(gitLabUrl, token, groupId, groupName)
-        }),
-        toCsvObs(),
-        toArray(),
-        concatMap((compareResult) => {
-            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
-            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
-            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
         }),
     )
 }
 
-export function writeCompareForksWithFirstCommitFileDetailsInGroupToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
+export function writeCompareForksWithFirstCommitFileDetailsInGroupToCsv$(
+    gitLabUrl: string, token: string, groupId: string, outdir: string
+) {
+    const projectsWithNoChanges: string[] = []
     let groupName: string
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
 
     return readGroup$(gitLabUrl, token, groupId).pipe(
         concatMap(group => {
             groupName = group.name
-            return compareForksInGroupWithFirstCommitFileDetails$(gitLabUrl, token, groupId, groupName)
+            return compareForksInGroupWithFirstCommitFileDetails$(gitLabUrl, token, groupId, groupName, projectsWithNoChanges)
         }),
         toCsvObs(),
         toArray(),
         concatMap((compareResult) => {
-            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
             const outFile = path.join(outdir, `${groupName}-compare--with-first-commit-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
             return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
         }),
     )
 }
@@ -153,16 +204,22 @@ export function writeCompareForksWithFirstCommitFileDetailsInGroupToCsv$(gitLabU
 // these functions may be exported for testing purposes
 
 
-export function compareForkLastTagOrBranchWithFirstCommit$(gitLabUrl: string, token: string, projectId: string) {
+export function compareForkLastTagOrBranchWithFirstCommit$(
+    gitLabUrl: string, token: string, projectId: string, projectName: string, projectsWithNoChanges: string[]
+) {
     const projectDataAndLastTagOrBranch$ = _getProjectDataAndLastTagOrBranchName$(gitLabUrl, token, projectId)
 
     const firstCommit$ = getFirstCommitSinceCreation$(gitLabUrl, token, projectId)
-    
+
     return forkJoin([projectDataAndLastTagOrBranch$, firstCommit$]).pipe(
         filter(([_, firstCommit]) => {
-            return !!firstCommit
+            if (!firstCommit) {
+                projectsWithNoChanges.push(projectName)
+                return false
+            }
+            return true
         }),
-        concatMap(([{projectData, lastTagOrBranchName}, firstCommit]) => {
+        concatMap(([{ projectData, lastTagOrBranchName }, firstCommit]) => {
             if (!firstCommit) {
                 console.error(`====>>>> Error: project ${projectData.project_name} has no commits`)
                 return []
@@ -176,11 +233,11 @@ export function compareForkLastTagOrBranchWithFirstCommit$(gitLabUrl: string, to
             )
             return from_firstCommit_to_fork$.pipe(
                 map((from_firstCommit_to_fork) => {
-                    return {from_firstCommit_to_fork, projectData, firstCommit, upstreamBranchName: projectData.upstream_repo_default_branch}
+                    return { from_firstCommit_to_fork, projectData, firstCommit, upstreamBranchName: projectData.upstream_repo_default_branch }
                 })
             )
         }),
-        map(({from_firstCommit_to_fork, projectData, firstCommit, upstreamBranchName}) => {
+        map(({ from_firstCommit_to_fork, projectData, firstCommit, upstreamBranchName }) => {
             const num_commits_ahead = from_firstCommit_to_fork.commits.length
             // build the url for GitLab that shows the commits ahead and behind for the forked project, a url like, for instance:
             // "https://git.ad.rgigroup.com/iiab/temporary_forks/payload-builder-core/-/tree/payload-builder-core-310.3.4?ref_type=tags"
@@ -232,9 +289,9 @@ export function compareForkLastTagOrBranchWithFirstCommit$(gitLabUrl: string, to
  */
 export function compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl: string, token: string, projectId: string) {
     const projectDataAndLastTagOrBranch$ = _getProjectDataAndLastTagOrBranchName$(gitLabUrl, token, projectId)
-    
+
     return projectDataAndLastTagOrBranch$.pipe(
-        concatMap(({projectData, lastTagOrBranchName}) => {
+        concatMap(({ projectData, lastTagOrBranchName }) => {
             const from_fork_to_upstream$ = compareProjects$(
                 gitLabUrl,
                 token,
@@ -253,11 +310,11 @@ export function compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl: 
             )
             return forkJoin([from_fork_to_upstream$, from_upstream_to_fork$]).pipe(
                 map(([from_fork_to_upstream, from_upstream_to_fork]) => {
-                    return {from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName: projectData.upstream_repo_default_branch}
+                    return { from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName: projectData.upstream_repo_default_branch }
                 })
             )
         }),
-        map(({from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName}) => {
+        map(({ from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName }) => {
             const num_commits_ahead = from_upstream_to_fork.commits.length
             const num_commits_behind = from_fork_to_upstream.commits.length
             // build the url for GitLab that shows the commits ahead and behind for the forked project, a url like, for instance:
@@ -299,6 +356,15 @@ const writeCompareResultsToCsv$ = (compareResults: any[], group: string, outFile
         .pipe(
             tap({
                 next: () => console.log(`====>>>> Fork compare result for Group ${group} written in csv file: ${outFile}`),
+            }),
+        );
+}
+
+const writeProjectsWithNoChanges$ = (projectsWithNoChanges: string[], group: string, outFile: string) => {
+    return writeFileObs(outFile, projectsWithNoChanges)
+        .pipe(
+            tap({
+                next: () => console.log(`====>>>> Forks with no commits for Group ${group} written in csv file: ${outFile}`),
             }),
         );
 }
@@ -374,9 +440,9 @@ function _getProjectDataAndLastTagOrBranchName$(gitLabUrl: string, token: string
     return forkJoin([projectdata$, lastTagOrBranch$]).pipe(
         map(([projectData, lastTagOrBranch]) => {
             const lastTagOrBranchName = lastTagOrBranch ? lastTagOrBranch.name : projectData.default_branch
-            return {projectData, lastTagOrBranchName}
+            return { projectData, lastTagOrBranchName }
         }),
-        filter(({projectData, lastTagOrBranchName}) => {
+        filter(({ projectData, lastTagOrBranchName }) => {
             if (lastTagOrBranchName === undefined || projectData.upstream_repo_default_branch === undefined) {
                 console.error(`====>>>> Error: lastTagName or upstream_repo_default_branch for project ${projectData.project_name} is undefined. LastTagName: ${lastTagOrBranchName}, upstream_repo_default_branch: ${projectData.upstream_repo_default_branch}`)
                 return false
@@ -386,9 +452,9 @@ function _getProjectDataAndLastTagOrBranchName$(gitLabUrl: string, token: string
     )
 }
 
-const newCompareResultWithDiffs = (compareResult: {diffs: any[]}) => {
+const newComparisonResultWithDiffs = (compareResult: { diffs: any[] }) => {
     // for each diff in diffs create a new object with all the fields of the compareResult and the diff
-    const {diffs, ...compareResultWitNoDiffs} = compareResult
+    const { diffs, ...compareResultWitNoDiffs } = compareResult
     const compareResultForFiles = diffs.map(diff => {
         const diffLines: string[] = diff.diff.split('\n')
         // numOfLinesAdded and numOfLinesDeleted are the number of lines added and deleted in the diff
@@ -412,7 +478,7 @@ const newCompareResultWithDiffs = (compareResult: {diffs: any[]}) => {
             numOfLinesDeleted,
             renamed_file: diff.renamed_file,
             deleted_file: diff.deleted_file,
-            generated_file: diff.generated_file?? false,
+            generated_file: diff.generated_file ?? false,
         }
     })
     return compareResultForFiles

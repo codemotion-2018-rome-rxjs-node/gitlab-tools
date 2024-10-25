@@ -233,11 +233,11 @@ export function compareForkLastTagOrBranchWithFirstCommit$(
             )
             return from_firstCommit_to_fork$.pipe(
                 map((from_firstCommit_to_fork) => {
-                    return { from_firstCommit_to_fork, projectData, firstCommit, upstreamBranchName: projectData.upstream_repo_default_branch }
+                    return { from_firstCommit_to_fork, projectData, firstCommit, lastTagOrBranchName }
                 })
             )
         }),
-        map(({ from_firstCommit_to_fork, projectData, firstCommit, upstreamBranchName }) => {
+        map(({ from_firstCommit_to_fork, projectData, firstCommit, lastTagOrBranchName }) => {
             const num_commits_ahead = from_firstCommit_to_fork.commits.length
             // build the url for GitLab that shows the commits ahead and behind for the forked project, a url like, for instance:
             // "https://git.ad.rgigroup.com/iiab/temporary_forks/payload-builder-core/-/tree/payload-builder-core-310.3.4?ref_type=tags"
@@ -253,9 +253,9 @@ export function compareForkLastTagOrBranchWithFirstCommit$(
             }
             return {
                 project_name: projectData.project_name_with_namespace,
+                lastTagOrBranchName,
                 firstCommit: firstCommit.id,
                 upstream_repo_name: projectData.upstream_repo_name,
-                upstream_repo_tag_or_branch: upstreamBranchName,
                 num_commits_ahead,
                 created: projectData.created_at,
                 updated: projectData.updated_at,

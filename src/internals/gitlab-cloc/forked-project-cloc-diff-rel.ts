@@ -4,7 +4,7 @@ import { catchError, concatMap, of, filter, EMPTY, toArray, tap, skip, startWith
 import { convertHttpsToSshUrl } from "../gitlab/project"
 import { compareForksWithUpstreamInGroup$ } from "../gitlab/compare-forks"
 import { readGroup$ } from "../gitlab/group"
-import { writeFileObs } from "observable-fs"
+import { readLinesObs, writeFileObs } from "observable-fs"
 import { fromCsvObs, toCsvObs } from "@enrico.piccinin/csv-tools"
 
 //********************************************************************************************************************** */
@@ -94,7 +94,8 @@ export function writeCompareForksInGroupWithUpstreamClocGitDiffRelByFile$(
 }
 
 export type AllDiffsRec = ClocDiffRec & {
-    diffLines: string
+    diffLines: string,
+    fileContent: string
 }
 export function compareForksInGroupWithUpstreamAllDiffs$(
     gitLabUrl: string,
@@ -235,7 +236,20 @@ export function allDiffsFromComparisonResult$(
             ).pipe(
                 map(bufferDiffLines => {
                     const diffLines = bufferDiffLines.toString()
-                    return { ...rec, diffLines } as AllDiffsRec
+                    return { ...rec, diffLines }
+                })
+            )
+        }),
+        concatMap(rec => {
+            return readLinesObs(rec.fullFilePath!).pipe(
+                map(lines => {
+                    return { ...rec, fileContent: lines.join('\n') } as AllDiffsRec
+                }),
+                catchError(err => {
+                    if (err.code === 'ENOENT') {
+                        return of({ ...rec, fileContent: 'file deleted' } as AllDiffsRec)
+                    }
+                    throw err
                 })
             )
         })

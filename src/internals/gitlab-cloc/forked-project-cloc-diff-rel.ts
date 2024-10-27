@@ -143,11 +143,10 @@ export function writeCompareForksInGroupWithUpstreamAllDiffs$(
                 gitLabUrl, token, groupId, groupName, projectsWithNoChanges, repoRootFolder, executedCommands, languages
             )
         }),
-        toCsvObs(),
         toArray(),
         concatMap((compareResult) => {
-            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-all-diffs-${timeStampYYYYMMDDHHMMSS}.csv`);
-            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-all-diffs-${timeStampYYYYMMDDHHMMSS}.json`);
+            return writeCompareResultsToJson$(compareResult, groupName, outFile)
         }),
         concatMap(() => {
             const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
@@ -218,7 +217,6 @@ export function clocDiffRelFromComparisonResult$(
     )
 }
 
-const NEW_LINE_REPLACEMENT_FOR_GIT_DIFF = '==NEW_LINE=='
 export function allDiffsFromComparisonResult$(
     comparisonResult: ComparisonResult, repoRootFolder: string, executedCommands: string[], languages?: string[]
 ) {
@@ -236,7 +234,7 @@ export function allDiffsFromComparisonResult$(
                 executedCommands
             ).pipe(
                 map(bufferDiffLines => {
-                    const diffLines = bufferDiffLines.toString().replaceAll('\n', NEW_LINE_REPLACEMENT_FOR_GIT_DIFF)
+                    const diffLines = bufferDiffLines.toString()
                     return { ...rec, diffLines } as AllDiffsRec
                 })
             )
@@ -346,6 +344,17 @@ const writeCompareResultsToCsv$ = (compareResults: any[], group: string, outFile
         .pipe(
             tap({
                 next: () => console.log(`====>>>> Fork compare result for Group ${group} written in csv file: ${outFile}`),
+            }),
+        );
+}
+
+const writeCompareResultsToJson$ = (compareResults: any[], group: string, outFile: string) => {
+    // dump compareResults as a json string
+    const jsonArray = JSON.stringify(compareResults, null, 2)
+    return writeFileObs(outFile, [jsonArray])
+        .pipe(
+            tap({
+                next: () => console.log(`====>>>> Fork compare result for Group ${group} written in json file: ${outFile}`),
             }),
         );
 }

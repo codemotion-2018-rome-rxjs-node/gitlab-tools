@@ -36,13 +36,13 @@ function dirFromNameWithNameSpace(pathParts: string) {
 }
 
 export function compareProjects$(
-    gitLabUrl: string, 
-    token: string, 
-    fromProjectID:string,
-    fromProjectBranchTagName: string,  
+    gitLabUrl: string,
+    token: string,
+    fromProjectID: string,
+    fromProjectBranchTagName: string,
     toProjectId: string,
     toProjectBranchTagName: string,
-    straight= true
+    straight = true
 ) {
     const command = `https://${gitLabUrl}/api/v4/projects/${toProjectId}/repository/compare?from=${fromProjectBranchTagName}&from_project_id=${fromProjectID}&to=${toProjectBranchTagName}&straight=${straight}`
     return from(axios.get(command, {
@@ -57,12 +57,12 @@ export function compareProjects$(
 }
 
 export function compareFromTagOrBranchToCommit$(
-    gitLabUrl: string, 
-    token: string, 
-    projectID:string,
-    fromBranchTagName: string,  
+    gitLabUrl: string,
+    token: string,
+    projectID: string,
+    fromBranchTagName: string,
     toCommit: string,
-    straight= true
+    straight = true
 ) {
     const command = `https://${gitLabUrl}/api/v4/projects/${projectID}/repository/compare?from=${fromBranchTagName}&to=${toCommit}&straight=${straight}`
     return from(axios.get(command, {
@@ -74,4 +74,18 @@ export function compareFromTagOrBranchToCommit$(
             return resp.data as ProjectCompare
         })
     )
+}
+
+// convertHttpToSshUrl is a function that converts a http url to a ssh url
+export function convertHttpsToSshUrl(httpUrl: string) {
+    const parts = httpUrl.split('//')
+    if (parts.length !== 2) {
+        throw new Error(`Invalid url ${httpUrl}`)
+    }
+    const url = parts[1]
+    const urlParts = url.split('/')
+    const firstUrlPart = urlParts[0]
+    const otherUrlParts = urlParts.slice(1)
+    const projectUrl = otherUrlParts.join('/')
+    return `git@${firstUrlPart}:${projectUrl}`
 }

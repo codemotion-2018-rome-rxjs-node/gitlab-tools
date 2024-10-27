@@ -59,7 +59,7 @@ export function runPagedCommand(command: string, token: string, itemType: string
             const x_next_page = resp.headers['x-next-page']
             const page = _nextPage(x_next_page)
             if (page === -1) {
-                console.log(`>>>>> Reading of items completed`)
+                console.log(`>>>>> Reading of ${itemType} completed`)
                 return EMPTY
             }
             return from(nextCall(command, token, page)).pipe(

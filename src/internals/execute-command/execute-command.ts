@@ -14,7 +14,7 @@ export function executeCommand(action: string, command: string) {
     return ret;
 }
 
-export function executeCommandObs(action: string, command: string) {
+export function executeCommandObs$(action: string, command: string, executedCommands?: string[]) {
     return new Observable((subscriber: Subscriber<string>) => {
         console.log(`====>>>> Action: ${action} -- Executing command with Observable`);
         console.log(`====>>>> ${command}`);
@@ -33,6 +33,9 @@ export function executeCommandObs(action: string, command: string) {
                 subscriber.next(`no message on stdout or stderr`);
             }
             console.log(`====>>>> Command ${command} executed successfully`);
+            if (executedCommands) {
+                executedCommands.push(command);
+            }
             subscriber.complete();
         });
     });
@@ -43,6 +46,7 @@ export function executeCommandNewProcessObs(
     command: string,
     args: string[],
     options?: SpawnOptionsWithoutStdio,
+    executedCommands?: string[]
 ) {
     return new Observable((subscriber: Subscriber<Buffer>) => {
         console.log(`====>>>> Action: ${action} -- Executing command in new process`);
@@ -69,6 +73,9 @@ export function executeCommandNewProcessObs(
         cmd.on('close', (code) => {
             subscriber.complete();
             console.log(`====>>>> Command ${command} with args ${args} executed - exit code ${code}`);
+            if (executedCommands) {
+                executedCommands.push(`${command} ${args.join(' ')}`);
+            }
         });
     });
 }
@@ -79,8 +86,9 @@ export function executeCommandNewProcessToLinesObs(
     command: string,
     args: string[],
     options?: SpawnOptionsWithoutStdio,
+    executedCommands?: string[]
 ) {
-    return executeCommandNewProcessObs(action, command, args, options).pipe(bufferToLines());
+    return executeCommandNewProcessObs(action, command, args, options, executedCommands).pipe(bufferToLines());
 }
 
 // custom operator that converts a buffer to lines, i.e. splits on \n to emit each line
@@ -112,9 +120,10 @@ export function executeCommandInShellNewProcessObs(
     action: string,
     command: string,
     options?: SpawnOptionsWithoutStdio,
+    executedCommands?: string[]
 ) {
     const _options = { ...options, shell: true };
-    return executeCommandNewProcessObs(action, command, [], _options);
+    return executeCommandNewProcessObs(action, command, [], _options, executedCommands);
 }
 
 export function getCommandOutput(linesFromStdOutAndStdErr: string[], errorMessage: string, cmd: string) {

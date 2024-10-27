@@ -1,6 +1,6 @@
 import { EMPTY, catchError, map, tap } from 'rxjs';
 
-import { executeCommandObs } from '../execute-command/execute-command';
+import { executeCommandObs$ } from '../execute-command/execute-command';
 
 // cloneRepo clones a repo from a given url to a given path and returns the path of the cloned repo
 export function cloneRepo(url: string, repoPath: string, repoName: string) {
@@ -9,7 +9,7 @@ export function cloneRepo(url: string, repoPath: string, repoName: string) {
 
     const command = `git clone ${url} ${repoPath.replaceAll(' ', '_')}`;
 
-    return executeCommandObs(`Clone ${repoName}`, command).pipe(
+    return executeCommandObs$(`Clone ${repoName}`, command).pipe(
         tap(() => `${repoName} cloned`),
         map(() => repoPath),
         catchError((err) => {

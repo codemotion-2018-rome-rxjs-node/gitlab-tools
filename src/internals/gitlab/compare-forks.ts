@@ -17,6 +17,29 @@ import { readForkedProjectsForGroup$ } from "./forks";
 //********************************************************************************************************************** */
 
 
+export type ComparisonBetweenCommitsResult = {
+    project_name: string;
+    project_created: string;
+    project_updated: string;
+    project_id: number;
+    from_tag_branch_commit: string;  // the tag or branch or commit from which the comparison is made
+    to_tag_branch_commit: string;  // the tag or branch or commit to which the comparison is made
+    num_commits_ahead: number;
+    num_commits_behind: number;
+    web_url_from_commit: string;
+    web_url_to_commit: string;
+    diffs: any[];
+}
+// ComparisonWithUpstreamResult extends ComparisonBetweenCommitsResult
+export type ComparisonWithUpstreamResult = {
+    project_name: string;
+    upstream_repo_name: string;
+    upstream_repo_forks_count: number;
+    upstream_url_to_repo: string;
+    ahead_behind_commits_url: string;
+    diffs: any[];
+} & ComparisonBetweenCommitsResult
+
 // COMPARE WITH UPSTREAM
 // for the function compareForksWithUpstreamInGroup$ we do not pass the projectsWithNoChanges array since even if
 // there are no changes in a project we still generate a comparison result for it with no commits ahed or behind
@@ -188,7 +211,7 @@ export function writeCompareForksWithFirstCommitFileDetailsInGroupToCsv$(
         toCsvObs(),
         toArray(),
         concatMap((compareResult) => {
-            const outFile = path.join(outdir, `${groupName}-compare--with-first-commit-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
+            const outFile = path.join(outdir, `${groupName}-compare-with-first-commit-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
             return writeCompareResultsToCsv$(compareResult, groupName, outFile)
         }),
         concatMap(() => {
@@ -251,22 +274,20 @@ export function compareForkLastTagOrBranchWithFirstCommit$(
                 const base_part = from_upstream_fork_url_parts[0]
                 first_commit_after_fork_creation_url = `${base_part}/-/tree/${firstCommit.id}`
             }
-            return {
-                project_name: projectData.project_name_with_namespace,
-                lastTagOrBranchName,
-                firstCommit: firstCommit.id,
-                upstream_repo_name: projectData.upstream_repo_name,
-                num_commits_ahead,
-                created: projectData.created_at,
-                updated: projectData.updated_at,
+            const comparisonResult: ComparisonBetweenCommitsResult = {
+                project_name: projectData.project_name_with_namespace!,
+                project_created: projectData.created_at,
+                project_updated: projectData.updated_at,
                 project_id: projectData.project_id,
-                upstream_repo_forks_count: projectData.upstream_repo_forks_count,
-                web_url_from_firstCommit_to_fork: from_firstCommit_to_fork.web_url,
-                first_commit_after_fork_creation_url: first_commit_after_fork_creation_url,
-                // diffs are the same for both from_firstCommit_to_fork and from_fork_to_firstCommit
-                // diffs is optional since it is not used in the csv file
+                from_tag_branch_commit: firstCommit.id,
+                to_tag_branch_commit: lastTagOrBranchName,
+                num_commits_ahead: num_commits_ahead,
+                num_commits_behind: 0,
+                web_url_to_commit: from_firstCommit_to_fork.web_url,
+                web_url_from_commit: first_commit_after_fork_creation_url,
                 diffs: from_firstCommit_to_fork.diffs
             }
+            return comparisonResult
         })
     )
 }
@@ -310,11 +331,11 @@ export function compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl: 
             )
             return forkJoin([from_fork_to_upstream$, from_upstream_to_fork$]).pipe(
                 map(([from_fork_to_upstream, from_upstream_to_fork]) => {
-                    return { from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName: projectData.upstream_repo_default_branch }
+                    return { from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName: projectData.upstream_repo_default_branch, upstream_url_to_repo: projectData.upstream_repo?.http_url_to_repo }
                 })
             )
         }),
-        map(({ from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName }) => {
+        map(({ from_fork_to_upstream, from_upstream_to_fork, projectData, lastTagOrBranchName, upstreamBranchName, upstream_url_to_repo }) => {
             const num_commits_ahead = from_upstream_to_fork.commits.length
             const num_commits_behind = from_fork_to_upstream.commits.length
             // build the url for GitLab that shows the commits ahead and behind for the forked project, a url like, for instance:
@@ -329,24 +350,24 @@ export function compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl: 
                 const base_part = from_upstream_fork_url_parts[0]
                 ahead_behind_commits_url = `${base_part}/-/tree/${lastTagOrBranchName}`
             }
-            return {
-                project_name: projectData.project_name_with_namespace,
-                fork_tag_or_branch: lastTagOrBranchName,
-                upstream_repo_name: projectData.upstream_repo_name,
-                upstream_repo_tag_or_branch: upstreamBranchName,
+            const comparisonWithUpstreamResult: ComparisonWithUpstreamResult = {
+                project_name: projectData.project_name_with_namespace!,
+                project_created: projectData.created_at,
+                project_updated: projectData.updated_at,
+                project_id: projectData.project_id,
+                from_tag_branch_commit: lastTagOrBranchName,
+                to_tag_branch_commit: upstreamBranchName!,
                 num_commits_ahead,
                 num_commits_behind,
-                created: projectData.created_at,
-                updated: projectData.updated_at,
-                project_id: projectData.project_id,
-                upstream_repo_forks_count: projectData.upstream_repo_forks_count,
-                web_url_from_upstream_to_fork: from_upstream_to_fork.web_url,
-                web_url_from_fork_to_upstream: from_fork_to_upstream.web_url,
+                web_url_from_commit: from_fork_to_upstream.web_url,
+                web_url_to_commit: from_upstream_to_fork.web_url,
+                upstream_repo_name: projectData.upstream_repo_name!,
+                upstream_repo_forks_count: projectData.upstream_repo_forks_count!,
+                upstream_url_to_repo: upstream_url_to_repo!,
                 ahead_behind_commits_url: ahead_behind_commits_url,
-                // diffs are the same for both from_fork_to_upstream and from_upstream_to_fork
-                // diffs is optional since it is not used in the csv file
                 diffs: from_fork_to_upstream.diffs
             }
+            return comparisonWithUpstreamResult
         })
     )
 }

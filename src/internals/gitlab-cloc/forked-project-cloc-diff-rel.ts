@@ -1,5 +1,5 @@
 import path from "path"
-import { executeCommandNewProcessToLinesObs, executeCommandObs$ } from "../execute-command/execute-command"
+import { executeCommandNewProcessObs, executeCommandNewProcessToLinesObs, executeCommandObs$ } from "../execute-command/execute-command"
 import { catchError, concatMap, of, filter, EMPTY, toArray, tap, skip, startWith, map } from "rxjs"
 import { convertHttpsToSshUrl } from "../gitlab/project"
 import { compareForksWithUpstreamInGroup$ } from "../gitlab/compare-forks"
@@ -11,6 +11,24 @@ import { fromCsvObs, toCsvObs } from "@enrico.piccinin/csv-tools"
 //****************************   APIs                               **************************************************** */
 //********************************************************************************************************************** */
 
+export type ClocDiffRec = {
+    File: string
+    blank_same: string
+    blank_modified: string
+    blank_added: string
+    blank_removed: string
+    comment_same: string
+    comment_modified: string
+    comment_added: string
+    comment_removed: string
+    code_same: string
+    code_modified: string
+    code_added: string
+    code_removed: string,
+    projectDir?: string,
+    fullFilePath?: string
+    extension?: string
+}
 export function compareForksInGroupWithUpstreamClocGitDiffRelByFile$(
     gitLabUrl: string,
     token: string,
@@ -75,6 +93,73 @@ export function writeCompareForksInGroupWithUpstreamClocGitDiffRelByFile$(
     )
 }
 
+export type AllDiffsRec = ClocDiffRec & {
+    diffLines: string
+}
+export function compareForksInGroupWithUpstreamAllDiffs$(
+    gitLabUrl: string,
+    token: string,
+    groupId: string,
+    groupName: string,
+    projectsWithNoChanges: string[],
+    repoRootFolder: string,
+    executedCommands: string[],
+    languages?: string[]
+) {
+    return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName).pipe(
+        filter(comparisonResult => {
+            if (comparisonResult.diffs.length === 0) {
+                projectsWithNoChanges.push(comparisonResult.project_name!)
+                console.log(`Project ${comparisonResult.project_name} has no changes`)
+                return false
+            }
+            return true
+        }),
+        concatMap(comparisonResult => {
+            return allDiffsFromComparisonResult$(comparisonResult, repoRootFolder, executedCommands, languages)
+        }),
+    )
+}
+
+export function writeCompareForksInGroupWithUpstreamAllDiffs$(
+    gitLabUrl: string,
+    token: string,
+    groupId: string,
+    repoRootFolder: string,
+    outdir: string,
+    languages?: string[]
+) {
+    const projectsWithNoChanges: string[] = []
+    let groupName: string
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+
+    const executedCommands: string[] = []
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksInGroupWithUpstreamAllDiffs$(
+                gitLabUrl, token, groupId, groupName, projectsWithNoChanges, repoRootFolder, executedCommands, languages
+            )
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-all-diffs-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-executed-commands-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeExecutedCommands$(executedCommands, groupName, outFile)
+        })
+    )
+}
+
 //********************************************************************************************************************** */
 //****************************               Internals              **************************************************** */
 //********************************************************************************************************************** */
@@ -85,24 +170,6 @@ export type ComparisonResult = {
     upstream_url_to_repo?: string
     from_tag_branch_commit: string
     to_tag_branch_commit: string
-}
-export type ClocDiffRec = {
-    File: string
-    blank_same: string
-    blank_modified: string
-    blank_added: string
-    blank_removed: string
-    comment_same: string
-    comment_modified: string
-    comment_added: string
-    comment_removed: string
-    code_same: string
-    code_modified: string
-    code_added: string
-    code_removed: string,
-    projectDir?: string,
-    fullFilePath?: string
-    extension?: string
 }
 export function clocDiffRelFromComparisonResult$(
     comparisonResult: ComparisonResult, repoRootFolder: string, executedCommands: string[], languages?: string[]
@@ -151,25 +218,30 @@ export function clocDiffRelFromComparisonResult$(
     )
 }
 
-
-export function clocDiffRelFromForkToUpstream$(
-    projectDir: string,
-    upstream_url_to_repo: string,
-    upstream_repo_tag_or_branch: string,
-    fork_tag_or_branch: string,
-    executedCommands: string[] = []
+const NEW_LINE_REPLACEMENT_FOR_GIT_DIFF = '==NEW_LINE=='
+export function allDiffsFromComparisonResult$(
+    comparisonResult: ComparisonResult, repoRootFolder: string, executedCommands: string[], languages?: string[]
 ) {
-    const params: {
-        from_tag_or_branch: string,
-        to_tag_or_branch: string,
-        upstream_url_to_repo?: string
-    } = {
-        from_tag_or_branch: fork_tag_or_branch,
-        to_tag_or_branch: upstream_repo_tag_or_branch,
-        upstream_url_to_repo
-    }
-
-    return clocDiffRel$(projectDir, params, executedCommands)
+    return clocDiffRelFromComparisonResult$(comparisonResult, repoRootFolder, executedCommands, languages).pipe(
+        concatMap(rec => {
+            console.log(`Calculating git diff for ${rec.fullFilePath}`)
+            return gitDiff$(
+                rec.projectDir!,
+                {
+                    from_tag_or_branch: comparisonResult.from_tag_branch_commit,
+                    to_tag_or_branch: comparisonResult.to_tag_branch_commit,
+                    upstream_url_to_repo: comparisonResult.upstream_url_to_repo
+                },
+                rec.File,
+                executedCommands
+            ).pipe(
+                map(bufferDiffLines => {
+                    const diffLines = bufferDiffLines.toString().replaceAll('\n', NEW_LINE_REPLACEMENT_FOR_GIT_DIFF)
+                    return { ...rec, diffLines } as AllDiffsRec
+                })
+            )
+        })
+    )
 }
 
 
@@ -178,33 +250,11 @@ export function clocDiffRel$(
     fromToParams: { from_tag_or_branch: string, to_tag_or_branch: string, upstream_url_to_repo?: string, languages?: string[] },
     executedCommands: string[]
 ) {
-    const baseRemoteName = 'base'
-    const upstream_url_to_repo = fromToParams.upstream_url_to_repo
-    let commandIfRemoteExists = ''
-    if (upstream_url_to_repo) {
-        // convert to ssh url to avoid password prompts
-        const sshUrl = convertHttpsToSshUrl(upstream_url_to_repo)
-        commandIfRemoteExists = ` && git remote add ${baseRemoteName} ${sshUrl} && git fetch base`
-    }
-    const firstCommand = `cd ${projectDir}${commandIfRemoteExists}`
-
-    return executeCommandObs$('cd to project directory and add base remote', firstCommand, executedCommands).pipe(
-        catchError((err) => {
-            // if the remote base already exists, we can ignore the error
-            if (err.message.includes(`remote ${baseRemoteName} already exists`)) {
-                return of(null)
-            }
-            // if the project directory does not exist, we can ignore the error
-            // it may be that thre is a new forked project in gitlab which has not been cloned yet
-            // in this case we can ignore the error but complete the observable to avoid that the
-            // next observable in the chain executes the cloc command
-            if (err.message.includes(`Command failed: cd`)) {
-                console.log(`Project directory ${projectDir} does not exist`)
-                executedCommands.push(`===>>> Error: Project directory ${projectDir} does not exist`)
-                return EMPTY
-            }
-            throw (err)
-        }),
+    return cdToProjectDirAndAddRemote$(
+        projectDir,
+        fromToParams,
+        executedCommands
+    ).pipe(
         concatMap(() => {
             const upstream_repo_tag_or_branch = fromToParams.to_tag_or_branch
             const fork_tag_or_branch = fromToParams.from_tag_or_branch
@@ -223,6 +273,71 @@ export function clocDiffRel$(
                 'run cloc --git-diff-rel --csv --by-file', secondCommand, args, options, executedCommands
             )
         })
+    )
+}
+
+
+export function gitDiff$(
+    projectDir: string,
+    fromToParams: { from_tag_or_branch: string, to_tag_or_branch: string, upstream_url_to_repo?: string },
+    file: string,
+    executedCommands: string[]
+) {
+    return cdToProjectDirAndAddRemote$(
+        projectDir,
+        fromToParams,
+        executedCommands
+    ).pipe(
+        concatMap(() => {
+            const upstream_repo_tag_or_branch = fromToParams.to_tag_or_branch
+            const fork_tag_or_branch = fromToParams.from_tag_or_branch
+            // `git diff base/${upstream_repo_tag_or_branch} origin/${fork_tag_or_branch} -- <File>`
+            const secondCommand = `git`
+            const args = ['diff', `base/${upstream_repo_tag_or_branch}`, `origin/${fork_tag_or_branch}`, '--', file]
+
+            const options = {
+                cwd: projectDir
+            }
+            return executeCommandNewProcessObs(
+                'run git diff', secondCommand, args, options, executedCommands
+            )
+        })
+    )
+}
+
+
+export function cdToProjectDirAndAddRemote$(
+    projectDir: string,
+    fromToParams: { upstream_url_to_repo?: string },
+    executedCommands: string[]
+) {
+    const baseRemoteName = 'base'
+    const upstream_url_to_repo = fromToParams.upstream_url_to_repo
+    let commandIfRemoteExists = ''
+    if (upstream_url_to_repo) {
+        // convert to ssh url to avoid password prompts
+        const sshUrl = convertHttpsToSshUrl(upstream_url_to_repo)
+        commandIfRemoteExists = ` && git remote add ${baseRemoteName} ${sshUrl} && git fetch base`
+    }
+    const command = `cd ${projectDir}${commandIfRemoteExists}`
+
+    return executeCommandObs$('cd to project directory and add base remote', command, executedCommands).pipe(
+        catchError((err) => {
+            // if the remote base already exists, we can ignore the error
+            if (err.message.includes(`remote ${baseRemoteName} already exists`)) {
+                return of(null)
+            }
+            // if the project directory does not exist, we can ignore the error
+            // it may be that thre is a new forked project in gitlab which has not been cloned yet
+            // in this case we can ignore the error but complete the observable to avoid that the
+            // next observable in the chain executes the cloc command
+            if (err.message.includes(`Command failed: cd`)) {
+                console.log(`Project directory ${projectDir} does not exist`)
+                executedCommands.push(`===>>> Error: Project directory ${projectDir} does not exist`)
+                return EMPTY
+            }
+            throw (err)
+        }),
     )
 }
 

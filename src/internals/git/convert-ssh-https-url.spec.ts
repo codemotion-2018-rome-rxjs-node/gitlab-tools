@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { convertHttpsToSshUrl } from './project';
+import { convertHttpsToSshUrl } from './convert-ssh-https-url';
 
 describe(`convertHttpsToSshUrl`, () => {
     it(`should return the ssh url from an https url`, () => {

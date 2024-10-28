@@ -1,11 +1,13 @@
 import path from "path"
 import { executeCommandNewProcessObs, executeCommandNewProcessToLinesObs, executeCommandObs$ } from "../execute-command/execute-command"
-import { catchError, concatMap, of, filter, EMPTY, toArray, tap, skip, startWith, map } from "rxjs"
+import { catchError, concatMap, of, filter, EMPTY, toArray, tap, skip, startWith, map, mergeMap } from "rxjs"
 import { convertHttpsToSshUrl } from "../gitlab/project"
 import { compareForksWithUpstreamInGroup$ } from "../gitlab/compare-forks"
 import { readGroup$ } from "../gitlab/group"
 import { readLinesObs, writeFileObs } from "observable-fs"
 import { fromCsvObs, toCsvObs } from "@enrico.piccinin/csv-tools"
+import { ExplainDiffPromptTemplateData, fillPromptTemplateExplainDiff } from "../openai/prompt-templates"
+import { getFullCompletion$ } from "../openai/openai"
 
 //********************************************************************************************************************** */
 //****************************   APIs                               **************************************************** */
@@ -95,7 +97,11 @@ export function writeCompareForksInGroupWithUpstreamClocGitDiffRelByFile$(
 
 export type AllDiffsRec = ClocDiffRec & {
     diffLines: string,
-    fileContent: string
+    fileContent: string,
+    deleted: null | boolean,
+    added: null | boolean,
+    copied: null | boolean,
+    renamed: null | boolean,
 }
 export function compareForksInGroupWithUpstreamAllDiffs$(
     gitLabUrl: string,
@@ -105,7 +111,7 @@ export function compareForksInGroupWithUpstreamAllDiffs$(
     projectsWithNoChanges: string[],
     repoRootFolder: string,
     executedCommands: string[],
-    languages?: string[]
+    languages?: string[],
 ) {
     return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName).pipe(
         filter(comparisonResult => {
@@ -147,6 +153,81 @@ export function writeCompareForksInGroupWithUpstreamAllDiffs$(
         toArray(),
         concatMap((compareResult) => {
             const outFile = path.join(outdir, `${groupName}-compare-with-upstream-all-diffs-${timeStampYYYYMMDDHHMMSS}.json`);
+            return writeCompareResultsToJson$(compareResult, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-executed-commands-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeExecutedCommands$(executedCommands, groupName, outFile)
+        })
+    )
+}
+
+export type DiffsWithExplanationRec = AllDiffsRec & {
+    explanation: string,
+}
+export type PromptTemplates = {
+    changedFile: string,
+    removedFile: string,
+    addedFile: string,
+}
+export function compareForksInGroupWithUpstreamExplanation$(
+    gitLabUrl: string,
+    token: string,
+    groupId: string,
+    groupName: string,
+    promptTemplates: PromptTemplates,
+    repoRootFolder: string,
+    projectsWithNoChanges: string[],
+    executedCommands: string[],
+    languages?: string[],
+    concurrentLLMCalls = 5
+) {
+    return compareForksInGroupWithUpstreamAllDiffs$(
+        gitLabUrl,
+        token,
+        groupId,
+        groupName,
+        projectsWithNoChanges,
+        repoRootFolder,
+        executedCommands,
+        languages
+    ).pipe(
+        mergeMap(comparisonResult => {
+            return explanationsFromComparisonResult$(comparisonResult, promptTemplates, executedCommands)
+        }, concurrentLLMCalls),
+    )
+}
+
+export function writeCompareForksInGroupWithUpstreamExplanation$(
+    gitLabUrl: string,
+    token: string,
+    groupId: string,
+    promptTemplates: PromptTemplates,
+    repoRootFolder: string,
+    outdir: string,
+    languages?: string[]
+) {
+    const projectsWithNoChanges: string[] = []
+    let groupName: string
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+
+    const executedCommands: string[] = []
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksInGroupWithUpstreamExplanation$(
+                gitLabUrl, token, groupId, groupName, promptTemplates, repoRootFolder, projectsWithNoChanges, executedCommands, languages
+            )
+        }),
+        toArray(),
+        concatMap((compareResult) => {
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-explanations-${timeStampYYYYMMDDHHMMSS}.json`);
             return writeCompareResultsToJson$(compareResult, groupName, outFile)
         }),
         concatMap(() => {
@@ -236,7 +317,21 @@ export function allDiffsFromComparisonResult$(
             ).pipe(
                 map(bufferDiffLines => {
                     const diffLines = bufferDiffLines.toString()
-                    return { ...rec, diffLines }
+                    const _lines = diffLines.split('\n')
+                    const secondLine = _lines[1]
+                    const _rec: AllDiffsRec = {
+                        ...rec, diffLines, fileContent: '', deleted: null, added: null, copied: null, renamed: null
+                    }
+                    if (secondLine.startsWith('deleted file mode')) {
+                        _rec.deleted = true
+                    } else if (secondLine.startsWith('new file mode')) {
+                        _rec.added = true
+                    } else if (secondLine.startsWith('copy ')) {
+                        _rec.copied = true
+                    } else if (secondLine.startsWith('rename ')) {
+                        _rec.renamed = true
+                    }
+                    return { ..._rec, diffLines }
                 })
             )
         }),
@@ -247,7 +342,7 @@ export function allDiffsFromComparisonResult$(
                 }),
                 catchError(err => {
                     if (err.code === 'ENOENT') {
-                        return of({ ...rec, fileContent: 'file deleted' } as AllDiffsRec)
+                        return of({ ...rec, fileContent: 'file not found' } as AllDiffsRec)
                     }
                     throw err
                 })
@@ -350,6 +445,73 @@ export function cdToProjectDirAndAddRemote$(
             }
             throw (err)
         }),
+    )
+}
+
+export function explanationsFromComparisonResult$(
+    allDiffsRec: AllDiffsRec, promptTemplates: PromptTemplates, executedCommands: string[]
+) {
+    let language = ''
+    // if the extension is .java, we can assume that the language is java
+    // if the extension is .ts, we can assume that the language is TypeScript
+    // Use a switch statement to handle other languages
+    switch (allDiffsRec.extension) {
+        case '.java':
+            language = 'java'
+            break
+        case '.ts':
+            language = 'TypeScript'
+            break
+        default:
+            language = ''
+    }
+
+    let promptTemplate = ''
+    if (allDiffsRec.deleted) {
+        promptTemplate = promptTemplates.removedFile
+    } else if (allDiffsRec.added) {
+        promptTemplate = promptTemplates.addedFile
+    } else {
+        promptTemplate = promptTemplates.changedFile
+    }
+    if (promptTemplate === '') {
+        let fileStatus = ''
+        if (allDiffsRec.copied) {
+            fileStatus = 'copied'
+        } else if (allDiffsRec.renamed) {
+            fileStatus = 'renamed'
+        }
+        const rec = {
+            ...allDiffsRec,
+            explanation: `explanations are only for changed, added or removed files - this file is ${fileStatus}`
+        }
+        return of(rec)
+    }
+    const promptData: ExplainDiffPromptTemplateData = {
+        language,
+        fileName: allDiffsRec.File,
+        fileContent: allDiffsRec.fileContent,
+        diffs: allDiffsRec.diffLines,
+    }
+    const prompt = fillPromptTemplateExplainDiff(promptTemplate, promptData)
+    console.log(`Calling LLM to explain diffs for file ${allDiffsRec.fullFilePath}`)
+    return getFullCompletion$(prompt).pipe(
+        catchError(err => {
+            const errMsg = `===>>> Error calling LLM to explain diffs for file ${allDiffsRec.fullFilePath} - ${err.message}`
+            console.log(errMsg)
+            executedCommands.push(errMsg)
+            return of('error in calling LLM to explain diffs')
+        }),
+        map(explanation => {
+            const command = `call openai to explain diffs for file ${allDiffsRec.fullFilePath}`
+            executedCommands.push(command)
+            return { ...allDiffsRec, explanation }
+        }),
+        map(rec => {
+            // remove the file content and the diffLines to avoid writing it to the json file
+            const { fileContent, diffLines, ..._rec } = rec
+            return _rec
+        })
     )
 }
 

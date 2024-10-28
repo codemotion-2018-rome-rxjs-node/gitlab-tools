@@ -37,6 +37,7 @@
     "axios": "^1.4.0",
     "commander": "^11.0.0",
     "observable-fs": "^2.2.8",
+    "openai": "^4.68.4",
     "rxjs": "^7.8.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.0/xlsx-0.20.0.tgz"
   }

@@ -16,6 +16,34 @@ import { readForkedProjectsForGroup$ } from "./forks";
 //****************************   APIs                               **************************************************** */
 //********************************************************************************************************************** */
 
+/*
+    These functions are the public APIs for comparing forked projects with either the first commit since the fork was created 
+    or the upstream repository default branch.
+    The comparison can be made for a group of projects, i.e. for all the projects in contained in a GitLab group.
+
+    In case of comparing with the first commit since the fork was created the comparison is made between the first commit and the
+    last tag or branch of the forked project.
+    The results of the comparison are objects of class ComparisonBetweenCommitsResult.
+    In case of comparing with the upstream repository the comparison is made between the last tag or branch of the forked project
+    and the default branch of the upstream repository.
+    The results of the comparison are objects of class ComparisonWithUpstreamResult which extends ComparisonBetweenCommitsResult 
+    with information related to the upstream project.
+
+    The comparisons may return either an array of:
+    - one record per project of type:
+        - ComparisonBetweenCommitsResult (in case the comparison is made with the first commit since the fork was created)
+        - ComparisonWithUpstreamResult (in case the comparison is made with the upstream repository)
+    - one record per file that results changed, added or removed in the comparison of type:
+        - ComparisonBetweenCommitsResult & FileDetails (in case of comparison with the first commit since the fork was created)
+        - ComparisonWithUpstreamResult & FileDetails (in case of comparison with the upstream repository)
+
+
+    There are functions that write the comparison results to csv files.
+*/
+
+
+//======================================================================================================================
+// COMPARE WITH FIRST COMMIT
 
 export type ComparisonBetweenCommitsResult = {
     project_name: string;
@@ -28,107 +56,11 @@ export type ComparisonBetweenCommitsResult = {
     num_commits_behind: number;
     web_url_from_commit: string;
     web_url_to_commit: string;
+}
+export type ComparisonBetweenCommitsResultWithDiffs = ComparisonBetweenCommitsResult & {
     diffs: any[];
 }
-// ComparisonWithUpstreamResult extends ComparisonBetweenCommitsResult
-export type ComparisonWithUpstreamResult = {
-    project_name: string;
-    upstream_repo_name: string;
-    upstream_repo_forks_count: number;
-    upstream_url_to_repo: string;
-    ahead_behind_commits_url: string;
-    diffs: any[];
-} & ComparisonBetweenCommitsResult
 
-// COMPARE WITH UPSTREAM
-// for the function compareForksWithUpstreamInGroup$ we do not pass the projectsWithNoChanges array since even if
-// there are no changes in a project we still generate a comparison result for it with no commits ahed or behind
-export function compareForksWithUpstreamInGroup$(gitLabUrl: string, token: string, groupId: string, groupName: string) {
-    let count = 0
-    return readForkedProjectsForGroup$(gitLabUrl, token, groupId, groupName).pipe(
-        concatMap(project => {
-            count += 1
-            console.log(`====>>>> Analyzing project ${project.name_with_namespace}`)
-            return compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl, token, project.id.toString())
-        }),
-        tap({
-            complete: () => {
-                console.log(`====>>>> Total number of for projects analyzed`, count)
-            }
-        })
-    )
-}
-
-// for the function compareForksWithUpstreamInGroup$ we do pass the projectsWithNoChanges array since there may be cases
-// when a project has been forked but no commits have been made to it and to the upstream project since the fork was created.
-// In this case there would be no diffs and therefore we do not generate any comparison result for the project.
-// In this cases we want to add the project name to the projectsWithNoChanges array so that we have evidence that the project
-// has no changes.
-export function compareForksInGroupWithUpstreamFileDetails$(
-    gitLabUrl: string, token: string, groupId: string, groupName: string, projectsWithNoChanges: string[]
-) {
-    return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName).pipe(
-        tap(comparisonResult => {
-            if (comparisonResult.diffs.length === 0) {
-                projectsWithNoChanges.push(comparisonResult.project_name!)
-            }
-        }),
-        concatMap(newComparisonResultWithDiffs),
-    )
-}
-
-export function writeCompareForksInGroupWithUpstreamToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
-    let groupName: string
-
-    return readGroup$(gitLabUrl, token, groupId).pipe(
-        concatMap(group => {
-            groupName = group.name
-            return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName)
-        }),
-        map(compareResult => {
-            // delete the diffs field from the compareResult
-            delete (compareResult as { diffs?: any }).diffs
-            return compareResult
-        }),
-        toCsvObs(),
-        toArray(),
-        concatMap((compareResult) => {
-            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
-            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-${timeStampYYYYMMDDHHMMSS}.csv`);
-            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
-        }),
-    )
-}
-
-export function writeCompareForksWithUpstreamFileDetailsInGroupToCsv$(
-    gitLabUrl: string, token: string, groupId: string, outdir: string
-) {
-    let groupName: string
-    const projectsWithNoChanges: string[] = []
-
-    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
-
-    return readGroup$(gitLabUrl, token, groupId).pipe(
-        concatMap(group => {
-            groupName = group.name
-            return compareForksInGroupWithUpstreamFileDetails$(gitLabUrl, token, groupId, groupName, projectsWithNoChanges)
-        }),
-        toCsvObs(),
-        toArray(),
-        concatMap((compareResult) => {
-            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
-            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
-        }),
-        concatMap(() => {
-            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
-            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
-        }),
-    )
-}
-//======================================================================================================================
-
-
-// COMPARE WITH FIRST COMMIT
 // for the function compareForksWithFirstCommitInGroup$ we do need to pass the projectsWithNoChanges array
 // the reason is that there are cases when a project has been forked but no commits have been made to it
 // since the fork was created. In this case we do not generate a comparison result for the project because there 
@@ -161,7 +93,7 @@ export function compareForksInGroupWithFirstCommitFileDetails$(
                 projectsWithNoChanges.push(comparisonResult.project_name!)
             }
         }),
-        concatMap(newComparisonResultWithDiffs),
+        concatMap(newComparisonResultWithDiffs<ComparisonBetweenCommitsResult>),
     )
 }
 
@@ -212,6 +144,105 @@ export function writeCompareForksWithFirstCommitFileDetailsInGroupToCsv$(
         toArray(),
         concatMap((compareResult) => {
             const outFile = path.join(outdir, `${groupName}-compare-with-first-commit-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
+        }),
+    )
+}
+
+//======================================================================================================================
+// COMPARE WITH UPSTREAM
+
+export type ComparisonWithUpstreamResult = {
+    project_name: string;
+    upstream_repo_name: string;
+    upstream_repo_forks_count: number;
+    upstream_url_to_repo: string;
+    ahead_behind_commits_url: string;
+} & ComparisonBetweenCommitsResult
+export type ComparisonWithUpstreamResultWithDiffs = {
+    diffs: any[];
+} & ComparisonWithUpstreamResult
+
+// for the function compareForksWithUpstreamInGroup$ we do not pass the projectsWithNoChanges array since even if
+// there are no changes in a project we still generate a comparison result for it with no commits ahed or behind
+export function compareForksWithUpstreamInGroup$(gitLabUrl: string, token: string, groupId: string, groupName: string) {
+    let count = 0
+    return readForkedProjectsForGroup$(gitLabUrl, token, groupId, groupName).pipe(
+        concatMap(project => {
+            count += 1
+            console.log(`====>>>> Analyzing project ${project.name_with_namespace}`)
+            return compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl, token, project.id.toString())
+        }),
+        tap({
+            complete: () => {
+                console.log(`====>>>> Total number of for projects analyzed`, count)
+            }
+        })
+    )
+}
+
+// for the function compareForksWithUpstreamInGroup$ we do pass the projectsWithNoChanges array since there may be cases
+// when a project has been forked but no commits have been made to it and to the upstream project since the fork was created.
+// In this case there would be no diffs and therefore we do not generate any comparison result for the project.
+// In this cases we want to add the project name to the projectsWithNoChanges array so that we have evidence that the project
+// has no changes.
+export function compareForksInGroupWithUpstreamFileDetails$(
+    gitLabUrl: string, token: string, groupId: string, groupName: string, projectsWithNoChanges: string[]
+) {
+    return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName).pipe(
+        tap(comparisonResult => {
+            if (comparisonResult.diffs.length === 0) {
+                projectsWithNoChanges.push(comparisonResult.project_name!)
+            }
+        }),
+        concatMap(newComparisonResultWithDiffs<ComparisonWithUpstreamResult>),
+    )
+}
+
+export function writeCompareForksInGroupWithUpstreamToCsv$(gitLabUrl: string, token: string, groupId: string, outdir: string) {
+    let groupName: string
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksWithUpstreamInGroup$(gitLabUrl, token, groupId, groupName)
+        }),
+        map(compareResult => {
+            // delete the diffs field from the compareResult
+            delete (compareResult as { diffs?: any }).diffs
+            return compareResult
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
+        }),
+    )
+}
+
+export function writeCompareForksWithUpstreamFileDetailsInGroupToCsv$(
+    gitLabUrl: string, token: string, groupId: string, outdir: string
+) {
+    let groupName: string
+    const projectsWithNoChanges: string[] = []
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksInGroupWithUpstreamFileDetails$(gitLabUrl, token, groupId, groupName, projectsWithNoChanges)
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-file-details-${timeStampYYYYMMDDHHMMSS}.csv`);
             return writeCompareResultsToCsv$(compareResult, groupName, outFile)
         }),
         concatMap(() => {
@@ -274,7 +305,7 @@ export function compareForkLastTagOrBranchWithFirstCommit$(
                 const base_part = from_upstream_fork_url_parts[0]
                 first_commit_after_fork_creation_url = `${base_part}/-/tree/${firstCommit.id}`
             }
-            const comparisonResult: ComparisonBetweenCommitsResult = {
+            const comparisonResult: ComparisonBetweenCommitsResultWithDiffs = {
                 project_name: projectData.project_name_with_namespace!,
                 project_created: projectData.created_at,
                 project_updated: projectData.updated_at,
@@ -350,7 +381,7 @@ export function compareForkLastTagOrBranchWithUpstreamDefaultBranch$(gitLabUrl: 
                 const base_part = from_upstream_fork_url_parts[0]
                 ahead_behind_commits_url = `${base_part}/-/tree/${lastTagOrBranchName}`
             }
-            const comparisonWithUpstreamResult: ComparisonWithUpstreamResult = {
+            const comparisonWithUpstreamResult: ComparisonWithUpstreamResultWithDiffs = {
                 project_name: projectData.project_name_with_namespace!,
                 project_created: projectData.created_at,
                 project_updated: projectData.updated_at,
@@ -473,9 +504,22 @@ function _getProjectDataAndLastTagOrBranchName$(gitLabUrl: string, token: string
     )
 }
 
-const newComparisonResultWithDiffs = (compareResult: { diffs: any[] }) => {
+export type FileDetails = {
+    new_path: string;
+    old_path: string;
+    extension: string;
+    numOfLinesAdded: number;
+    numOfLinesDeleted: number;
+    renamed_file: boolean;
+    deleted_file: boolean;
+    generated_file: boolean;
+}
+function newComparisonResultWithDiffs<T>(
+    compareResult: { diffs: any[] }
+) {
     // for each diff in diffs create a new object with all the fields of the compareResult and the diff
-    const { diffs, ...compareResultWitNoDiffs } = compareResult
+    const { diffs, ..._compareResultWitNoDiffs } = compareResult
+    const compareResultWitNoDiffs = _compareResultWitNoDiffs as T
     const compareResultForFiles = diffs.map(diff => {
         const diffLines: string[] = diff.diff.split('\n')
         // numOfLinesAdded and numOfLinesDeleted are the number of lines added and deleted in the diff
@@ -490,8 +534,7 @@ const newComparisonResultWithDiffs = (compareResult: { diffs: any[] }) => {
             }
         })
         const extension = path.extname(diff.new_path)
-        return {
-            ...compareResultWitNoDiffs,
+        const fileDetails: FileDetails = {
             new_path: diff.new_path,
             old_path: diff.old_path,
             extension,
@@ -501,6 +544,13 @@ const newComparisonResultWithDiffs = (compareResult: { diffs: any[] }) => {
             deleted_file: diff.deleted_file,
             generated_file: diff.generated_file ?? false,
         }
+
+        const rec = {
+            ...compareResultWitNoDiffs,
+            ...fileDetails,
+        }
+
+        return rec
     })
     return compareResultForFiles
 }

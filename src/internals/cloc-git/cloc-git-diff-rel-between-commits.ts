@@ -1,13 +1,29 @@
-import { fromCsvObs } from "@enrico.piccinin/csv-tools"
 import path from "path"
-import { filter, skip, startWith, map, concatMap, catchError, of } from "rxjs"
+import { filter, skip, startWith, map, concatMap, catchError, of, Observable, mergeMap, tap, toArray } from "rxjs"
+
+import { fromCsvObs, toCsvObs } from "@enrico.piccinin/csv-tools"
+import { readLinesObs, writeFileObs } from "observable-fs"
+
 import { executeCommandNewProcessToLinesObs } from "../execute-command/execute-command"
 import { cdToProjectDirAndAddRemote$ } from "../git/add-remote"
-import { readLinesObs } from "observable-fs"
 import { gitDiff$ } from "../git/git-diffs"
-import { FileDiffWithGitDiffsAndFileContent } from "../gitlab-cloc/forked-project-cloc-diff-rel"
+import { explainGitDiffs$, PromptTemplates } from "../git/explain-diffs"
 
+//********************************************************************************************************************** */
+//****************************   APIs                               **************************************************** */
+//********************************************************************************************************************** */
 
+// FileDiffWithGitDiffsAndFileContent defines the objects containing:
+// - the cloc git diff information
+// - the git diff information (the diffLines returned by git diff command and the status of the file, deleted, added, copied, renamed -
+//   the status is determined by the second line of the git diff command output)
+// - the file content
+export type FileStatus = {
+    deleted: null | boolean,
+    added: null | boolean,
+    copied: null | boolean,
+    renamed: null | boolean,
+}
 export type ClocGitDiffRec = {
     File: string
     blank_same: string
@@ -22,29 +38,25 @@ export type ClocGitDiffRec = {
     code_modified: string
     code_added: string
     code_removed: string,
-    projectDir?: string,
-    fullFilePath?: string
-    extension?: string
+    projectDir: string,
+    fullFilePath: string
+    extension: string
+}
+export type FileDiffWithGitDiffsAndFileContent = ClocGitDiffRec & FileStatus & {
+    diffLines: string,
+    fileContent: string,
 }
 
 export type ComparisonParams = {
-    project_name: string
+    projectDir: string
     from_tag_branch_commit: string
     to_tag_branch_commit: string
     upstream_url_to_repo?: string
 }
-export function clocDiffRelFromComparisonResult$(
+export function clocDiffRelForProject$(
     comparisonParams: ComparisonParams, repoRootFolder: string, executedCommands: string[], languages?: string[]
 ) {
-    // the project_name_with_namespace is in the format group / subgroup / project
-    // we want to turn this into a directory split by '/' and then join the various parts with the projectDir
-    const projectDirParts = comparisonParams.project_name.split('/')
-    let projectDir = ''
-    for (let i = 0; i < projectDirParts.length; i++) {
-        projectDir = path.join(projectDir, projectDirParts[i].trim())
-    }
-    projectDir = path.join(repoRootFolder, projectDir)
-
+    const projectDir = path.join(repoRootFolder, comparisonParams.projectDir)
     const header = 'File,blank_same,blank_modified,blank_added,blank_removed,comment_same,comment_modified,comment_added,comment_removed,code_same,code_modified,code_added,code_removed'
     return clocDiffRel$(
         projectDir,
@@ -80,11 +92,11 @@ export function clocDiffRelFromComparisonResult$(
     )
 }
 
-export function allDiffsFromComparisonResult$(
-    comparisonParams: ComparisonParams, repoRootFolder: string, executedCommands: string[], languages?: string[]
-) {
-    return clocDiffRelFromComparisonResult$(comparisonParams, repoRootFolder, executedCommands, languages).pipe(
-        concatMap(rec => {
+export function allDiffsForProject$(
+    comparisonParams: ComparisonParams, repoRootFolder: string, executedCommands: string[], languages?: string[], concurrentGitDiff = 5
+): Observable<FileDiffWithGitDiffsAndFileContent> {
+    return clocDiffRelForProject$(comparisonParams, repoRootFolder, executedCommands, languages).pipe(
+        mergeMap(rec => {
             console.log(`Calculating git diff for ${rec.fullFilePath}`)
             return gitDiff$(
                 rec.projectDir!,
@@ -115,8 +127,8 @@ export function allDiffsFromComparisonResult$(
                     return { ..._rec, diffLines }
                 })
             )
-        }),
-        concatMap(rec => {
+        }, concurrentGitDiff),
+        concatMap((rec: FileDiffWithGitDiffsAndFileContent & { diffLines: string }) => {
             return readLinesObs(rec.fullFilePath!).pipe(
                 map(lines => {
                     return { ...rec, fileContent: lines.join('\n') } as FileDiffWithGitDiffsAndFileContent
@@ -128,10 +140,66 @@ export function allDiffsFromComparisonResult$(
                     throw err
                 })
             )
+        }),
+    )
+}
+
+export type FileDiffWithExplanation = ClocGitDiffRec & FileStatus & {
+    explanation: string,
+}
+export function allDiffsForProjectWithExplanation$(
+    comparisonParams: ComparisonParams,
+    repoFolder: string,
+    promptTemplates: PromptTemplates,
+    executedCommands: string[],
+    languages?: string[],
+    concurrentLLMCalls = 5
+): Observable<FileDiffWithExplanation> {
+    return allDiffsForProject$(comparisonParams, repoFolder, executedCommands, languages).pipe(
+        mergeMap(comparisonResult => {
+            return explainGitDiffs$(comparisonResult, promptTemplates, executedCommands)
+        }, concurrentLLMCalls)
+    )
+}
+
+export function writeAllDiffsForProjectWithExplanationToCsv$(
+    comparisonParams: ComparisonParams,
+    promptTemplates: PromptTemplates,
+    repoFolder: string,
+    outdir: string,
+    languages?: string[]
+) {
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+
+    const executedCommands: string[] = []
+
+    const projectDirName = path.basename(comparisonParams.projectDir)
+
+    return allDiffsForProjectWithExplanation$(comparisonParams, repoFolder, promptTemplates, executedCommands, languages).pipe(
+        // replace any ',' in the explanation with a '-'
+        map((diffWithExplanation) => {
+            diffWithExplanation.explanation = diffWithExplanation.explanation.replace(/,/g, '-')
+            diffWithExplanation.explanation = diffWithExplanation.explanation.replace(/;/g, ' ')
+            return diffWithExplanation
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const outFile = path.join(outdir, `${projectDirName}-compare-with-upstream-explanations-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, projectDirName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${projectDirName}-executed-commands-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeExecutedCommands$(executedCommands, projectDirName, outFile)
         })
     )
 }
 
+
+//********************************************************************************************************************** */
+//****************************               Internals              **************************************************** */
+//********************************************************************************************************************** */
+// these functions may be exported for testing purposes
 
 export function clocDiffRel$(
     projectDir: string,
@@ -162,4 +230,22 @@ export function clocDiffRel$(
             )
         })
     )
+}
+
+const writeCompareResultsToCsv$ = (compareResults: any[], projectDirName: string, outFile: string) => {
+    return writeFileObs(outFile, compareResults)
+        .pipe(
+            tap({
+                next: () => console.log(`====>>>> Compare result for project ${projectDirName} written in csv file: ${outFile}`),
+            }),
+        );
+}
+
+const writeExecutedCommands$ = (executedCommands: string[], projectDirName: string, outFile: string) => {
+    return writeFileObs(outFile, executedCommands)
+        .pipe(
+            tap({
+                next: () => console.log(`====>>>> Command executed to calculate comparisons for project "${projectDirName}" written in csv file: ${outFile}`),
+            }),
+        );
 }

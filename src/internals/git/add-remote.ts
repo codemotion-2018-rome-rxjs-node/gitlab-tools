@@ -14,9 +14,9 @@ export function cdToProjectDirAndAddRemote$(
     if (upstream_url_to_repo) {
         // convert to ssh url to avoid password prompts
         const sshUrl = convertHttpsToSshUrl(upstream_url_to_repo)
-        commandIfRemoteExists = ` && git remote add ${baseRemoteName} ${sshUrl} && git fetch base`
+        commandIfRemoteExists = ` && git remote add ${baseRemoteName} ${sshUrl} && git fetch --all --tags`
     }
-    const command = `cd ${projectDir}${commandIfRemoteExists}`
+    const command = `cd ${projectDir} && git fetch origin ${commandIfRemoteExists}`
 
     return executeCommandObs$('cd to project directory and add base remote', command, executedCommands).pipe(
         catchError((err) => {

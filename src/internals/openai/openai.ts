@@ -14,7 +14,10 @@ export function getFullCompletion$(prompt: string, model = 'gpt-4o', temperature
     });
 
     return from(_completion).pipe(
-        map((completion) => completion.choices[0].message.content),
+        map((completion) => {
+            const _explanation = completion.choices[0].message.content || 'no explanation received';
+            return _explanation;
+        }),
     )
 
     // try {

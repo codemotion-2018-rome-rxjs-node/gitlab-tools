@@ -1,13 +1,13 @@
 import path from "path"
-import { concatMap, filter, toArray, tap, mergeMap } from "rxjs"
+import { concatMap, filter, toArray, tap, mergeMap, map } from "rxjs"
 
 import { writeFileObs } from "observable-fs"
 import { toCsvObs } from "@enrico.piccinin/csv-tools"
 
 import { compareForksWithUpstreamInGroup$ } from "../gitlab/compare-forks"
 import { readGroup$ } from "../gitlab/group"
-import { allDiffsFromComparisonResult$, clocDiffRelFromComparisonResult$, ClocGitDiffRec } from "../cloc-git/cloc-git-diff-rel-between-commits"
-import { explanationsFromComparisonResult$ } from "../git/explain-diffs"
+import { allDiffsForProject$, clocDiffRelForProject$, ClocGitDiffRec, FileStatus } from "../cloc-git/cloc-git-diff-rel-between-commits"
+import { explainGitDiffs$, PromptTemplates } from "../git/explain-diffs"
 
 //********************************************************************************************************************** */
 //****************************   APIs                               **************************************************** */
@@ -47,7 +47,9 @@ export function compareForksInGroupWithUpstreamClocGitDiffRelByFile$(
             return true
         }),
         mergeMap(comparisonResult => {
-            return clocDiffRelFromComparisonResult$(comparisonResult, repoRootFolder, executedCommands, languages)
+            const projectDir = projectDirFromProjectName(comparisonResult.project_name!, repoRootFolder)
+            const _comparisonResult = { ...comparisonResult, projectDir }
+            return clocDiffRelForProject$(_comparisonResult, repoRootFolder, executedCommands, languages)
         }, concurrentClocGitDiff),
     )
 }
@@ -94,21 +96,6 @@ export function writeCompareForksInGroupWithUpstreamClocGitDiffRelByFile$(
 //======================================================================================================================
 // COMPARE WITH UPSTREAM WITH cloc --git-diff-rel --by-file AND ENRICH WITH GIT DIFF INFORMATION ANS FILE CONTENT
 
-// FileDiffWithGitDiffsAndFileContent defines the objects containing:
-// - the cloc git diff information
-// - the git diff information (the diffLines returned by git diff command and the status of the file, deleted, added, copied, renamed -
-//   the status is determined by the second line of the git diff command output)
-// - the file content
-export type FileStatus = {
-    deleted: null | boolean,
-    added: null | boolean,
-    copied: null | boolean,
-    renamed: null | boolean,
-}
-export type FileDiffWithGitDiffsAndFileContent = ClocGitDiffRec & FileStatus & {
-    diffLines: string,
-    fileContent: string,
-}
 export function compareForksInGroupWithUpstreamAllDiffs$(
     gitLabUrl: string,
     token: string,
@@ -130,7 +117,9 @@ export function compareForksInGroupWithUpstreamAllDiffs$(
             return true
         }),
         mergeMap(comparisonResult => {
-            return allDiffsFromComparisonResult$(comparisonResult, repoRootFolder, executedCommands, languages)
+            const projectDir = projectDirFromProjectName(comparisonResult.project_name!, repoRootFolder)
+            const _comparisonResult = { ...comparisonResult, projectDir }
+            return allDiffsForProject$(_comparisonResult, repoRootFolder, executedCommands, languages)
         }, concurrentClocGitDiff),
     )
 }
@@ -173,10 +162,6 @@ export function writeCompareForksInGroupWithUpstreamAllDiffs$(
     )
 }
 
-export type FileDiffWithGitDiffsAndFileContentWithExplanation = FileDiffWithGitDiffsAndFileContent & {
-    explanation: string
-}
-
 //======================================================================================================================
 // COMPARE WITH UPSTREAM WITH cloc --git-diff-rel --by-file AND PROVIDE AN EXPLANATION FOR THE DIFFS USING THE LLM
 
@@ -187,11 +172,6 @@ export type FileDiffWithGitDiffsAndFileContentWithExplanation = FileDiffWithGitD
 // it has not the file content and the diffLines so that it can be written to a json or csv file
 export type DiffsWithExplanationRec = ClocGitDiffRec & FileStatus & {
     explanation: string,
-}
-export type PromptTemplates = {
-    changedFile: string,
-    removedFile: string,
-    addedFile: string,
 }
 export function compareForksInGroupWithUpstreamExplanation$(
     gitLabUrl: string,
@@ -216,12 +196,12 @@ export function compareForksInGroupWithUpstreamExplanation$(
         languages
     ).pipe(
         mergeMap(comparisonResult => {
-            return explanationsFromComparisonResult$(comparisonResult, promptTemplates, executedCommands)
+            return explainGitDiffs$(comparisonResult, promptTemplates, executedCommands)
         }, concurrentLLMCalls),
     )
 }
 
-export function writeCompareForksInGroupWithUpstreamExplanation$(
+export function writeCompareForksInGroupWithUpstreamExplanationToJson$(
     gitLabUrl: string,
     token: string,
     groupId: string,
@@ -248,6 +228,52 @@ export function writeCompareForksInGroupWithUpstreamExplanation$(
         concatMap((compareResult) => {
             const outFile = path.join(outdir, `${groupName}-compare-with-upstream-explanations-${timeStampYYYYMMDDHHMMSS}.json`);
             return writeCompareResultsToJson$(compareResult, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeProjectsWithNoChanges$(projectsWithNoChanges, groupName, outFile)
+        }),
+        concatMap(() => {
+            const outFile = path.join(outdir, `${groupName}-executed-commands-${timeStampYYYYMMDDHHMMSS}.txt`);
+            return writeExecutedCommands$(executedCommands, groupName, outFile)
+        })
+    )
+}
+
+export function writeCompareForksInGroupWithUpstreamExplanationToCsv$(
+    gitLabUrl: string,
+    token: string,
+    groupId: string,
+    promptTemplates: PromptTemplates,
+    repoRootFolder: string,
+    outdir: string,
+    languages?: string[]
+) {
+    const projectsWithNoChanges: string[] = []
+    let groupName: string
+
+    const timeStampYYYYMMDDHHMMSS = new Date().toISOString().replace(/:/g, '-').split('.')[0]
+
+    const executedCommands: string[] = []
+
+    return readGroup$(gitLabUrl, token, groupId).pipe(
+        concatMap(group => {
+            groupName = group.name
+            return compareForksInGroupWithUpstreamExplanation$(
+                gitLabUrl, token, groupId, groupName, promptTemplates, repoRootFolder, projectsWithNoChanges, executedCommands, languages
+            )
+        }),
+        // replace any ',' in the explanation with a '-'
+        map((diffWithExplanation) => {
+            diffWithExplanation.explanation = diffWithExplanation.explanation.replace(/,/g, '-')
+            diffWithExplanation.explanation = diffWithExplanation.explanation.replace(/;/g, ' ')
+            return diffWithExplanation
+        }),
+        toCsvObs(),
+        toArray(),
+        concatMap((compareResult) => {
+            const outFile = path.join(outdir, `${groupName}-compare-with-upstream-explanations-${timeStampYYYYMMDDHHMMSS}.csv`);
+            return writeCompareResultsToCsv$(compareResult, groupName, outFile)
         }),
         concatMap(() => {
             const outFile = path.join(outdir, `${groupName}-projects-with-no-changes-${timeStampYYYYMMDDHHMMSS}.txt`);
@@ -301,4 +327,17 @@ const writeExecutedCommands$ = (executedCommands: string[], group: string, outFi
                 next: () => console.log(`====>>>> Command executed to calculate fork diffs for group "${group}" written in csv file: ${outFile}`),
             }),
         );
+}
+
+
+function projectDirFromProjectName(project_name: string, repoRootFolder: string) {
+    // the project_name_with_namespace is in the format group / subgroup / project
+    // we want to turn this into a directory split by '/' and then join the various parts with the projectDir
+    const projectDirParts = project_name.split('/')
+    let projectDir = ''
+    for (let i = 0; i < projectDirParts.length; i++) {
+        projectDir = path.join(projectDir, projectDirParts[i].trim())
+    }
+    projectDir = path.join(repoRootFolder, projectDir)
+    return projectDir
 }

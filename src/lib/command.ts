@@ -7,8 +7,10 @@ import { launchWriteGroupProjects } from '../apps/write-group-projects/launch-wr
 
 const command = process.argv[2];
 
-// change this file adding a comment and a console.log
+
 console.log('I am a file modified');
+
+// one change in a file where I have reoved a line above
 
 const commandsAvailable: { [command: string]: () => void } = {
     'analyze-merge-requests': launchMergeRequestAnalysis,

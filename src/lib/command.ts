@@ -7,11 +7,14 @@ import { launchWriteGroupProjects } from '../apps/write-group-projects/launch-wr
 
 const command = process.argv[2];
 
+// change this file adding a comment and a console.log
+console.log('I am a file modified');
+
 const commandsAvailable: { [command: string]: () => void } = {
     'analyze-merge-requests': launchMergeRequestAnalysis,
     'write-group-projects': launchWriteGroupProjects,
     'clone-group-projects': launchCloneGroupProjects,
-    'compare-forks-with-upstream':launchCompareForksWithUpstream,
+    'compare-forks-with-upstream': launchCompareForksWithUpstream,
 }
 
 const functionForCommand = commandsAvailable[command];

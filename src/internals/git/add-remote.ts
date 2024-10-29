@@ -16,7 +16,7 @@ export function cdToProjectDirAndAddRemote$(
         const sshUrl = convertHttpsToSshUrl(upstream_url_to_repo)
         commandIfRemoteExists = ` && git remote add ${baseRemoteName} ${sshUrl} && git fetch --all --tags`
     }
-    const command = `cd ${projectDir} && git fetch origin ${commandIfRemoteExists}`
+    const command = `cd ${projectDir} && git fetch --all --tags ${commandIfRemoteExists}`
 
     return executeCommandObs$('cd to project directory and add base remote', command, executedCommands).pipe(
         catchError((err) => {

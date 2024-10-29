@@ -14,20 +14,45 @@ export function gitDiff$(
         executedCommands
     ).pipe(
         concatMap(() => {
-            const upstream_repo_tag_or_branch = fromToParams.to_tag_or_branch
-            const fork_tag_or_branch = fromToParams.from_tag_or_branch
+            const to_tag_branch_commit = fromToParams.to_tag_or_branch
+            const from_tag_branch_commit = fromToParams.from_tag_or_branch
             // `git diff base/${upstream_repo_tag_or_branch} origin/${fork_tag_or_branch} -- <File>`
-            const secondCommand = `git`
-            const args = ['diff', `remotes/base/${upstream_repo_tag_or_branch}`, `remotes/origin/${fork_tag_or_branch}`, '--', file]
+            const command = `git`
+            const compareWithRemote = fromToParams.upstream_url_to_repo ? true : false
+            const prefixes = toFromTagBranchCommitPrefix(to_tag_branch_commit, from_tag_branch_commit, compareWithRemote)
+            const args = [
+                'diff',
+                `${prefixes.toTagBranchCommitPrefix}${to_tag_branch_commit}`,
+                `${prefixes.fromTagBranchCommitPrefix}${from_tag_branch_commit}`,
+                '--',
+                file
+            ]
+
+            console.log(`running git diff ${args.join(' ')}`)
 
             const options = {
                 cwd: projectDir
             }
             return executeCommandNewProcessObs(
-                'run git diff', secondCommand, args, options, executedCommands
+                'run git diff', command, args, options, executedCommands
             )
         }),
         // reduce the output of the git diff command, which can be a buffer in case of a long diff story, to a single string
         reduce((acc, curr) => acc + curr, '')
     )
+}
+
+export function toFromTagBranchCommitPrefix(toTagBranchCommit: string, fromTagBranchCommit: string, compareWithRemote = false) {
+    const base_or_origin_for_to_tagBranchCommit = compareWithRemote ? 'base/' : 'origin/'
+    const resp = {
+        toTagBranchCommitPrefix: `${base_or_origin_for_to_tagBranchCommit}`,
+        fromTagBranchCommitPrefix: 'origin/'
+    }
+    if (toTagBranchCommit.startsWith('tags/')) {
+        resp.toTagBranchCommitPrefix = `refs/`
+    }
+    if (fromTagBranchCommit.startsWith('tags/')) {
+        resp.fromTagBranchCommitPrefix = `refs/`
+    }
+    return resp
 }

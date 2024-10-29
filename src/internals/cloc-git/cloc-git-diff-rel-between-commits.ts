@@ -6,7 +6,7 @@ import { readLinesObs, writeFileObs } from "observable-fs"
 
 import { executeCommandNewProcessToLinesObs } from "../execute-command/execute-command"
 import { cdToProjectDirAndAddRemote$ } from "../git/add-remote"
-import { gitDiff$ } from "../git/git-diffs"
+import { gitDiff$, toFromTagBranchCommitPrefix } from "../git/git-diffs"
 import { explainGitDiffs$, PromptTemplates } from "../git/explain-diffs"
 
 //********************************************************************************************************************** */
@@ -212,11 +212,19 @@ export function clocDiffRel$(
         executedCommands
     ).pipe(
         concatMap(() => {
-            const upstream_repo_tag_or_branch = fromToParams.to_tag_or_branch
-            const fork_tag_or_branch = fromToParams.from_tag_or_branch
+            const to_tag_branch_commit = fromToParams.to_tag_or_branch
+            const from_tag_branch_commit = fromToParams.from_tag_or_branch
             // `cloc --git-diff-rel --csv --by-file base/${upstream_repo_tag_or_branch} origin/${fork_tag_or_branch}`
-            const secondCommand = `cloc`
-            const args = ['--git-diff-rel', '--csv', '--by-file', `base/${upstream_repo_tag_or_branch}`, `origin/${fork_tag_or_branch}`]
+            const command = `cloc`
+            const compareWithRemote = fromToParams.upstream_url_to_repo ? true : false
+            const prefixes = toFromTagBranchCommitPrefix(to_tag_branch_commit, from_tag_branch_commit, compareWithRemote)
+            const args = [
+                '--git-diff-rel',
+                '--csv',
+                '--by-file',
+                `${prefixes.toTagBranchCommitPrefix}${from_tag_branch_commit}`,
+                `${prefixes.fromTagBranchCommitPrefix}${to_tag_branch_commit}`
+            ]
 
             if (fromToParams.languages && fromToParams.languages?.length > 0) {
                 const languagesString = fromToParams.languages.join(',');
@@ -226,7 +234,7 @@ export function clocDiffRel$(
                 cwd: projectDir
             }
             return executeCommandNewProcessToLinesObs(
-                'run cloc --git-diff-rel --csv --by-file', secondCommand, args, options, executedCommands
+                'run cloc --git-diff-rel --csv --by-file', command, args, options, executedCommands
             )
         })
     )
